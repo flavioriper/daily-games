@@ -1642,7 +1642,9 @@ SETS = {
     # free), `slip` the tongue lower and twice (a mark the clues prove
     # wrong), `enter` a run of tokens (the cards laid down). The rest are
     # takes already on disk, copied into build/sfx_raw/pie/ from Market
-    # Sums' (themselves Teacups'), never bought. All of it unheard.
+    # Sums' (themselves Teacups'), never bought. All of it unheard. `theme`
+    # (2026-11-06) the wrap climbing an octave as the day's thing is painted
+    # on the win's pie, as Market Sums'.
     "pie": {
         "pick":     ('one small smooth pebble dropped onto a wooden board, a single soft rounded click, very short', 0.5, -16, FOLEY, "bank:pebble", "cut:0.16", "notes:0:1", "tight"),
         "clear":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.2", "notes:0.07:0,4", "tight"),
@@ -1651,6 +1653,8 @@ SETS = {
         "slip":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.2", "notes:0.1:-3,-6", "tight"),
         "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
         "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.05:-2,1,-2,0,3,1,0", "tight"),
+        # the daily theme (2026-11-06): the day's thing painted on the pie
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),
         "solved":   ("a warm short celebratory flourish on a real kalimba and a music box, rising arpeggio ending on a soft hand bell shimmer, joyful and cozy", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),
         "party":    ("a short cozy celebratory flourish on a real kalimba and a music box, rising and bright, with a few soft little party blower toots, warm and joyful", 2.0, -8, BEADBOX_TUNE, "warm:2600", "body:300"),

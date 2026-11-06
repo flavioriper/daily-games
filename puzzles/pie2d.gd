@@ -49,6 +49,8 @@ const Personas = preload("res://peeplet/peeplet_personas.gd")
 const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
+const Face = preload("res://ui/faces/face.gd")
 
 enum Phase { PLAY, DONE }
 
@@ -60,6 +62,7 @@ const HAPTICS := {
 	"slip": Haptics.WARN,
 	"hint": Haptics.GOOD,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 ## The screen the board was drawn on; everything scales with the width.
@@ -80,6 +83,39 @@ const WIN_HOLD := 1.4
 const WAVE_STEP := 0.05
 ## The columns' letters.
 const LETTERS := "ABCDEFGH"
+## The daily theme (2026-11-06): on a daily whose night pictures this phone
+## holds (the 12, else the 10), the win sets the day's pie on the table
+## with the day's thing on its top in beads. The bakers laugh a quicker
+## wave (THEME_WAVE_STEP), then step back with their cards (FADE_AT after
+## the solve, over FADE_TIME, cards to CARD_DIM, the bakers all the way: a
+## Peeplet half faded reads as a ghost), the pie drops in at THEME_AT
+## (DROP_TIME, from DROP_FROM of its size), and the beads pour on row by
+## row from the bottom PAINT_AT later, a row every PAINT_STEP, each over
+## PAINT_TIME; it bumps when whole. PIE_SIDE is the pie across of the
+## smaller of the grid's sides. The card waits THEME_HOLD longer.
+## While playing, every other baker caught names one of the day's things
+## (PI_TQUIP_0..), in pt/es only when the night said the names' gender.
+const THEMED_SIZES := [12, 10]
+const THEME_WAVE_STEP := 0.025
+const FADE_AT := 0.95
+const FADE_TIME := 0.3
+const CARD_DIM := 0.22
+const THEME_AT := 1.15
+const DROP_TIME := 0.38
+const DROP_FROM := 0.55
+const PAINT_AT := 0.25
+const PAINT_STEP := 0.04
+const PAINT_TIME := 0.26
+const PIE_SIDE := 0.9
+const PAINT_PALE := 0.82
+const PAINT_PALE_SHADE := 0.12
+const THEME_HOLD := 1.6
+const TQUIPS := 3
+## The pt/es articles a gender takes.
+const ARTICLES := {
+	"pt": {"m": "o", "f": "a", "mp": "os", "fp": "as"},
+	"es": {"m": "el", "f": "la", "mp": "los", "fp": "las"},
+}
 ## A baker's picture: metres of the Peeplet's world it is tall and the height
 ## it looks at, so the tallest hat (the wizard's) stays in; the picked
 ## baker breathes at PICKED_FPS, the rest hold still.
@@ -156,6 +192,16 @@ var _lay_at := -INF
 var _world: Control
 ## The board's sounds and sparks; none on the tutorial's silent board.
 var fx: Node
+## The daily theme: the night's picture for the win's pie ({} on a plain
+## day), the night's things for the caught bakers' lines, when the pie
+## came in (INF before), and the beads' mesh, kept until the next replaces
+## it (`_beads_key` what it was built for, `_beads_done` once whole).
+var _theme: Dictionary = {}
+var _things: Array = []
+var _theme_at := INF
+var _beads_shown: ArrayMesh
+var _beads_key := ""
+var _beads_done := false
 
 func puzzle_id() -> String: return "pie"
 func title() -> String: return "Who Ate the Pie?"
@@ -221,9 +267,38 @@ func _ready() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_band = clampi(difficulty, 0, 3)
 	_st.deal(rng, _band)
+	_theme = _night_picture()
+	_things = _night_things()
 	_fresh()
 	_enter_at = _t
 	_cue("enter")
+
+## The night's picture for the win's pie: only a daily dealt from its day,
+## never New, never the tutorial's table. The deal never reads it.
+func _night_picture() -> Dictionary:
+	if demo or bank_step != 0 or daily_key == 0:
+		return {}
+	for side in THEMED_SIZES:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			return pic
+	return {}
+
+## The night's things the caught bakers may name, in the player's language:
+## English always, Portuguese and Spanish only with the names' gender.
+func _night_things() -> Array:
+	var out: Array = []
+	if demo or bank_step != 0 or daily_key == 0:
+		return out
+	var lang: String = TranslationServer.get_locale().substr(0, 2)
+	for t: Dictionary in ThemedPictures.names(daily_key):
+		if lang == "pt" or lang == "es":
+			if not t.has("g"):
+				continue
+			out.append("%s %s" % [ARTICLES[lang][t.g[lang]], String(t[lang]).to_lower()])
+		else:
+			out.append(String(t.en).to_lower())
+	return out
 
 ## Every card as dealt, nobody picked.
 func _fresh() -> void:
@@ -248,6 +323,10 @@ func _fresh() -> void:
 	_nudge_baker = -1
 	_dim = 0
 	_quip = ""
+	_theme_at = INF
+	_beads_shown = null
+	_beads_key = ""
+	_beads_done = false
 	_queue.clear()
 	_phase = Phase.PLAY
 	_relayout()
@@ -256,7 +335,8 @@ func day_dict() -> Dictionary:
 	if _st.names.is_empty():
 		return {}
 	return {
-		"source": "generator", "kind": "text",
+		"source": "theme" if themed() else "generator", "kind": "text",
+		"theme": String(_theme.get("id", "")),
 		"payload": {"cols": _st.cols, "rows": _st.rows, "names": _st.names, "clues": _st.clues,
 			"start": _st.start, "dish": _st.dish},
 		"solution": {"ate": _st.ate},
@@ -380,7 +460,13 @@ func _verdict(eat: bool, by_hint := false) -> void:
 		moves += 1
 		moved.emit()
 	if eat:
-		_quip = "PI_QUIP_%d" % (i % QUIPS)
+		var nth: int = _st.found() - 1
+		if not _things.is_empty() and nth % 2 == 0:
+			# every other baker caught names one of the day's things
+			var thing: String = _things[(nth >> 1) % _things.size()]
+			_quip = tr("PI_TQUIP_%d" % ((i + nth) % TQUIPS)) % thing
+		else:
+			_quip = "PI_QUIP_%d" % (i % QUIPS)
 		_quip_at = _t + FLIP_TIME
 	_flip_at[i] = _t
 	_hop_at[i] = _t + FLIP_TIME * 0.5
@@ -409,8 +495,11 @@ func _solved_now() -> void:
 	_breathe()
 	_won_at = _t + FLIP_TIME + 0.2
 	# the table laughs along the win's wave
+	var step := THEME_WAVE_STEP if themed() else WAVE_STEP
 	for j in _st.count():
-		_after(FLIP_TIME + 0.2 + j * WAVE_STEP + 0.1, _laugh.bind(j))
+		_after(FLIP_TIME + 0.2 + j * step + 0.1, _laugh.bind(j))
+	if themed():
+		_theme_win()
 	_after(FLIP_TIME + 0.15, func() -> void: _cue("solved"))
 	if not demo:
 		_after(FLIP_TIME + 0.5, func() -> void:
@@ -561,6 +650,10 @@ func _laugh(i: int) -> void:
 func _seat(i: int, side: float, base: Transform2D, c: Vector2, tint: Color) -> void:
 	if i >= _views.size() or _views[i].size.x <= 0.0:
 		return
+	var gone := _stepped_back()
+	if gone >= 1.0:
+		return
+	tint.a = minf(tint.a, 1.0 - gone)
 	var v := _views[i]
 	var xf := base * Transform2D(0.0, Vector2.ONE * (side / v.size.x), 0.0, c - Vector2.ONE * side * 0.5)
 	v.position = xf.origin
@@ -571,7 +664,10 @@ func _seat(i: int, side: float, base: Transform2D, c: Vector2, tint: Color) -> v
 func _draw_over() -> void:
 	for i: int in _crumbs:
 		var at: Array = _crumbs[i]
-		_over.draw_mesh(Art.crumbs(float(at[2])), null, at[0], at[1])
+		if _stepped_back() >= 1.0:
+			break
+		_over.draw_mesh(Art.crumbs(float(at[2])), null, at[0], Color(at[1], (at[1] as Color).a * (1.0 - _stepped_back())))
+	_draw_pie()
 
 # --- the fingers ---
 
@@ -843,7 +939,7 @@ func _draw_card(i: int) -> void:
 	if hop >= 0.0 and hop < Motion.HOP_TIME and not Motion.reduce:
 		off.y += Motion.hop_lift(hop, Motion.SOLVE_HOP * 1.2 * u, Motion.HOP_TIME)
 	if won and _won_at > -INF and not Motion.reduce:
-		var wave: float = _t - _won_at - i * WAVE_STEP
+		var wave: float = _t - _won_at - i * (THEME_WAVE_STEP if themed() else WAVE_STEP)
 		if wave >= 0.0 and wave < Motion.SOLVE_TIME:
 			off.y += Motion.hop_lift(wave, Motion.SOLVE_HOP * 2.0 * u, Motion.SOLVE_TIME)
 	# the turn over: the card narrows to an edge, its paper changes, it opens
@@ -863,6 +959,9 @@ func _draw_card(i: int) -> void:
 	var mid := r.get_center() + off
 	var base := Transform2D(0.0, Vector2(sx, 1.0), 0.0, mid) * Transform2D(0.0, -r.size * 0.5)
 	var tint := Color(1, 1, 1, a)
+	var gone := _stepped_back()
+	if gone > 0.0:
+		tint.a *= lerpf(1.0, CARD_DIM, gone)
 	if i == _sel and not won:
 		var k := Motion.pop_in_scale(_t - _sel_at).x if _t - _sel_at < Motion.POP_IN else 1.0
 		draw_mesh(Art.halo(r.size, Pal.SUN, 7.0 * u), null,
@@ -1019,7 +1118,7 @@ func _centred(font: Font, text: String, b: Rect2, fs: int, ink: Color) -> void:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return WIN_HOLD
+	return WIN_HOLD + (THEME_HOLD if themed() else 0.0)
 
 func skill_quality() -> float:
 	if _st.names.is_empty():
@@ -1035,6 +1134,8 @@ func flat_win() -> Dictionary:
 		line = tr("PI_WIN_CLEAN")
 	else:
 		line = (tr("PI_WIN_SLIPS_ONE") if _st.slips == 1 else tr("PI_WIN_SLIPS_N")) % _st.slips
+	if themed():
+		return {"faces": [], "subtitle": tr("PI_WIN_THEME") % [String(_theme.name), line]}
 	return {"faces": [], "subtitle": tr("PI_WIN") % _st.eaters() + " " + line}
 
 func completion_record() -> Dictionary:
@@ -1050,4 +1151,116 @@ func restore_completed_board() -> void:
 	_breathe()
 	_phase = Phase.DONE
 	_won_at = _t
+	if themed():
+		# a reopened themed day shows the pie with the bakers stepped back
+		_theme_at = _t - 10.0
 	queue_redraw()
+
+# --- the daily theme (2026-11-06) ---
+
+func themed() -> bool:
+	return not _theme.is_empty()
+
+## The win on a themed day: the pie comes in and its beads pour on, the
+## theme cue ringing as they start, a sparkle when whole. Under reduce
+## motion the pie is simply there.
+func _theme_win() -> void:
+	if Motion.reduce:
+		_theme_at = _t - 10.0
+		_after(0.0, func() -> void: _cue("theme"))
+		return
+	_theme_at = _t + THEME_AT
+	var rows: int = (_theme.rows as Array).size()
+	_after(THEME_AT + PAINT_AT, func() -> void: _cue("theme"))
+	_after(THEME_AT + PAINT_AT + PAINT_STEP * rows + PAINT_TIME, func() -> void:
+		if fx != null and not _L.is_empty():
+			fx.sparkle(_pie_centre(), Pal.SUN))
+
+## How far the bakers and their cards have stepped back for the pie, 0 to 1.
+func _stepped_back() -> float:
+	if _theme_at == INF:
+		return 0.0
+	if Motion.reduce:
+		return 1.0
+	return clampf((_t - (_theme_at - THEME_AT + FADE_AT)) / FADE_TIME, 0.0, 1.0)
+
+## The middle of the grid, where the pie is set down.
+func _pie_centre() -> Vector2:
+	var last := _card_rect(_st.count() - 1)
+	var first := _card_rect(0)
+	return (first.position + last.end) * 0.5
+
+## The pie's dish radius: PIE_SIDE of the grid's smaller side, halved.
+func _pie_radius() -> float:
+	var last := _card_rect(_st.count() - 1)
+	var first := _card_rect(0)
+	var span := last.end - first.position
+	return minf(span.x, span.y) * PIE_SIDE * 0.5
+
+## How far row `r` (of `rows`) has taken its beads, 0 to 1; bottom row first.
+func _paint_level(r: int, rows: int) -> float:
+	if Motion.reduce:
+		return 1.0
+	var k := (_t - _theme_at - PAINT_AT - PAINT_STEP * float(rows - 1 - r)) / PAINT_TIME
+	return clampf(k, 0.0, 1.0)
+
+## The day's pie on the table, the thing on its top: drawn over the cards
+## (on `_over`) from when it comes in. The dish is Art's cached mesh; the
+## beads one mesh rebuilt while they pour or the layout moves, then kept.
+func _draw_pie() -> void:
+	if _theme_at == INF or _t < _theme_at or _L.is_empty():
+		return
+	var rows: Array = _theme.rows
+	var n := rows.size()
+	if n == 0:
+		return
+	var e := _t - _theme_at
+	var r := _pie_radius()
+	var at := _pie_centre()
+	var k := 1.0
+	var alpha := 1.0
+	if not Motion.reduce:
+		if e < DROP_TIME:
+			k = lerpf(DROP_FROM, 1.0, Motion.back_out(e / DROP_TIME))
+			alpha = clampf(e / (DROP_TIME * 0.5), 0.0, 1.0)
+			at.y -= (1.0 - e / DROP_TIME) * r * 0.25
+		var whole := PAINT_AT + PAINT_STEP * n + PAINT_TIME
+		var be := e - whole
+		if be >= 0.0 and be < Motion.BUMP_TIME:
+			k *= Motion.bump_scale(be, 0.06)
+	var xf := Transform2D(0.0, Vector2.ONE * k, 0.0, at)
+	_over.draw_mesh(Art.pie_top(r), null, xf, Color(1, 1, 1, alpha))
+	# the thing, a square inside the pastry top
+	var side := r * Art.TOP_REACH * 1.62
+	var cell := side / float(n)
+	var o := -Vector2.ONE * side * 0.5
+	var all := Motion.reduce or e >= PAINT_AT + PAINT_STEP * n + PAINT_TIME
+	var key := "%s:%d" % [String(_theme.get("id", "")), roundi(side)]
+	if key != _beads_key:
+		_beads_key = key
+		_beads_done = false
+	if _beads_shown == null or not _beads_done:
+		var letters: Dictionary = ThemedPictures.letters()
+		var b := Face.Builder.new()
+		for row_i in n:
+			var lv := _paint_level(row_i, n)
+			if lv <= 0.0:
+				continue
+			var row: String = rows[row_i]
+			for c in row.length():
+				if row[c] == ".":
+					continue
+				var bead = Pal.PG_BEADS.get(String(letters.get(row[c], "")))
+				if bead == null:
+					continue
+				var face: Color = bead
+				if face.get_luminance() > PAINT_PALE:
+					face = face.darkened(PAINT_PALE_SHADE)
+				var sz := Vector2.ONE * cell * 0.9 * lerpf(0.4, 1.0, Motion.back_out(lv))
+				var lo := o + (Vector2(c, row_i) + Vector2.ONE * 0.5) * cell - sz * 0.5
+				b.fan(Face.Builder.round_rect(lo + Vector2(0.0, cell * 0.07), sz, cell * 0.22), Color(face.darkened(0.3), lv))
+				b.fan(Face.Builder.round_rect(lo, sz, cell * 0.22), Color(face, lv))
+		_beads_shown = b.mesh() if not b.verts.is_empty() else null
+		_beads_done = all
+	if _beads_shown != null:
+		_over.draw_mesh(_beads_shown, null, xf, Color(1, 1, 1, alpha))

@@ -103,3 +103,44 @@
   nine views at most. Owed: a phone run (20 SubViewports on Insane, MSAA 4x
   each, plus nine on a tutorial page), the traits and lines are not in
   the game (they need locale rows first).
+
+## The daily theme (2026-11-06)
+
+The roadmap's Pie row (wave 4, A), done phone-first so tonight's build
+plays it in English with no deploy.
+
+- **The day's pie**: on a daily dealt from its day (never New, never the
+  tutorial's table) with the night's 12 (else 10) in the phone's cache,
+  the win sets the day's pie on the table, seen from above
+  (`Art.pie_top`: dish, crimped crust, pale pastry), the thing on its top
+  in beads. Timing from the solve: the bakers laugh a quicker wave
+  (THEME_WAVE_STEP 0.025), then the cards dim to CARD_DIM and the bakers
+  fade all the way (FADE_AT 0.95 s over 0.3; a half-faded Peeplet reads as
+  a ghost), the pie drops in at THEME_AT 1.15 s, the beads pour on from
+  the bottom row 0.25 s later (a row every 0.04, each over 0.26) with the
+  `theme` cue, then a bump and a sparkle, whole at about 2.1 s. The card
+  waits THEME_HOLD 1.6 longer (3.0 s). Subtitle `PI_WIN_THEME` ("On the
+  pie: %s! %s"). A reopened themed day shows the pie with the bakers
+  stepped back; the card's eye shows it under the report. Under reduce
+  motion the pie is simply there. The deal, the solver and the clues are
+  untouched; `day_dict` says `source: theme`.
+- **The caught bakers' lines**: every other baker caught (the 1st, 3rd...)
+  names one of the night's things in turn (`PI_TQUIP_0..2`, "I was only
+  admiring the cactus… and then the pie was gone."). pt/es put an article
+  before the name, so they take the line only when the night sends the
+  names' gender (`g` {pt, es}: m/f/mp/fp, `ThemedPictures.names`); without
+  it pt/es keep the plain quips. The templates never make a verb or a
+  preposition agree with the thing (no "do/da", no "viu/viram").
+- **The night side** (committed, not deployed): the theme writer's schema
+  asks each object's `g` (`server/functions/src/theme.ts`, `genderOf`), and
+  `pictures.ts` carries it beside `name` on each size. Old themes without
+  it still parse. Owed: `tools/deploy_functions.sh` (the user's), then a
+  night smoke of the theme writer.
+- Draw calls (opengl3_angle 810x1440, `theme`): Insane play 143-167, win
+  127-225; Medium win 196. `_win.gd -- pie` PASS.
+- Harness: `tests/_shot_pie.gd -- <dir> d=<n> theme|night=YYYYMMDD [fakeg]
+  [lang=pt]` adds `theme_fade`, `theme_drop`, `theme_paint`,
+  `theme_whole`; `fakeg` gives every thing a masculine gender to show the
+  pt/es lines before the night sends one.
+- Owed: phone, ear (`theme`), pt/es native read of the three lines,
+  reduce motion unseen.

@@ -27,6 +27,21 @@ export interface Thing {
    *  schema: keyFor (key.ts) answers it when it is missing, so themes
    *  written before it still parse. */
   creature?: boolean;
+  /** Its grammatical gender and number in Portuguese and Spanish: "m", "f",
+   *  "mp" or "fp" (2026-11-06, Who Ate the Pie?'s lines put an article
+   *  before the name). Optional: themes written before it have none and
+   *  still parse, and a board then keeps its plain pt/es words. */
+  g?: {pt: string; es: string};
+}
+
+/** The genders a thing's `g` may hold. */
+export const GENDERS = ["m", "f", "mp", "fp"];
+
+/** A thing's `g` when it is whole and right, or undefined. */
+export function genderOf(x: Thing): {pt: string; es: string} | undefined {
+  const g = x.g;
+  if (typeof g !== "object" || g === null) return undefined;
+  return GENDERS.includes(g.pt) && GENDERS.includes(g.es) ? {pt: g.pt, es: g.es} : undefined;
 }
 
 export interface Theme {
@@ -140,7 +155,7 @@ A theme is one small, warm place or moment: a campfire at dusk, a bakery in the 
 The theme is drawn as pixel pictures of very few squares, so everything in it must be a big simple shape a child would name at once.
 
 - "scene": one sentence, what a single picture of the theme shows: four to six big things and where they are, in several areas of different colour, so that no sky, wall or floor is half the picture. No people's faces, no text.
-- "objects": exactly ${THINGS} single things from that scene, the simplest first, each drawn as one pixel art sprite on a bare board. Each must be recognisable by its outline alone (a mushroom, a mug, a tent: yes; a book, a blanket, a cloud of steam: no). "draw" says the thing with its colours, clearly different ones: three or four for the first ("a red mushroom with white spots and a cream stem"), then more with each, up to seven or eight for the last three, which are the ones with the most to them, full of detail to draw big (a basket of fruit, a tea tray, a lantern among leaves, a cottage with flower boxes). None of them is a thin or spindly shape: each fills most of a square. None is mostly one colour (a red apple, a blue teapot: no; a striped mug, a slice of watermelon, a toadstool: yes). "name" is its plain English name, one or two words, and "pt" and "es" the same in Portuguese (Brazil) and Spanish.
+- "objects": exactly ${THINGS} single things from that scene, the simplest first, each drawn as one pixel art sprite on a bare board. Each must be recognisable by its outline alone (a mushroom, a mug, a tent: yes; a book, a blanket, a cloud of steam: no). "draw" says the thing with its colours, clearly different ones: three or four for the first ("a red mushroom with white spots and a cream stem"), then more with each, up to seven or eight for the last three, which are the ones with the most to them, full of detail to draw big (a basket of fruit, a tea tray, a lantern among leaves, a cottage with flower boxes). None of them is a thin or spindly shape: each fills most of a square. None is mostly one colour (a red apple, a blue teapot: no; a striped mug, a slice of watermelon, a toadstool: yes). "name" is its plain English name, one or two words, and "pt" and "es" the same in Portuguese (Brazil) and Spanish. "g" is the grammatical gender and number of the pt and es names: "m", "f", "mp" (masculine plural) or "fp".
 - "name": the theme's name, two or three words, in each language.
 - "words": ${WORDS} common single nouns about the theme in each language, four to eight letters, lowercase.
 - "cast": ${CAST_RULE}
@@ -157,8 +172,10 @@ const THEME_SCHEMA = {
     scene: {type: "string"},
     // Exactly THINGS, in the schema too: told only in words, Gemini 3.8
     // Flash answered five and eight as often as six (2026-10-30).
-    objects: {type: "array", minItems: THINGS, maxItems: THINGS, items: {type: "object", additionalProperties: false, required: ["id", "name", "pt", "es", "draw"],
+    objects: {type: "array", minItems: THINGS, maxItems: THINGS, items: {type: "object", additionalProperties: false, required: ["id", "name", "pt", "es", "g", "draw"],
       properties: {id: {type: "string"}, name: {type: "string"}, pt: {type: "string"}, es: {type: "string"},
+        g: {type: "object", additionalProperties: false, required: ["pt", "es"],
+          properties: {pt: {type: "string", enum: GENDERS}, es: {type: "string", enum: GENDERS}}},
         draw: {type: "string", maxLength: DRAW_MAX}}}},
     words: {type: "object", additionalProperties: false, required: ["en", "pt", "es"],
       properties: {en: {type: "array", items: {type: "string"}}, pt: {type: "array", items: {type: "string"}},

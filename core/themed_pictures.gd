@@ -81,6 +81,47 @@ static func picture(date_key: int, size: int) -> Dictionary:
 	shown = shown.strip_edges()
 	return {"id": "themed_" + id, "name": shown.left(1).to_upper() + shown.substr(1), "rows": pic.rows}
 
+## The things of the night's pictures for the daily of `date_key`, smallest
+## band first, each once: {en, pt, es} names as the night wrote them, and
+## `g` ({pt, es}: "m", "f", "mp" or "fp") when the theme said the pt/es
+## names' gender (since 2026-11-06; Who Ate the Pie? puts an article
+## before them). The scene's picture is not a thing and is left out.
+const GENDERS := ["m", "f", "mp", "fp"]
+static func names(date_key: int) -> Array:
+	var out: Array = []
+	if date_key == 0 or not Backend.started():
+		return out
+	var doc: Dictionary = Backend.cached_day(GAME, date_key)
+	var sizes = doc.get("sizes")
+	if int(doc.get("v", 0)) != 1 or not sizes is Dictionary:
+		return out
+	var keys: Array = (sizes as Dictionary).keys()
+	keys.sort_custom(func(a, b) -> bool: return int(a) < int(b))
+	var seen := {}
+	for k in keys:
+		var pic = sizes[k]
+		if not pic is Dictionary or not pic.get("name") is Dictionary:
+			continue
+		var id := String(pic.get("id", ""))
+		if id == "" or id == "scene" or seen.has(id):
+			continue
+		var n: Dictionary = pic.name
+		var row := {}
+		for lang in ["en", "pt", "es"]:
+			var w := String(n.get(lang, "")).strip_edges()
+			if w == "" or w.length() > 30:
+				row = {}
+				break
+			row[lang] = w
+		if row.is_empty():
+			continue
+		var g = pic.get("g")
+		if g is Dictionary and String(g.get("pt", "")) in GENDERS and String(g.get("es", "")) in GENDERS:
+			row["g"] = {"pt": String(g.pt), "es": String(g.es)}
+		seen[id] = true
+		out.append(row)
+	return out
+
 ## Yarn Hoop's drawn picture for `band` of the daily of `date_key`:
 ## {id, name, pins, panels, inks} (pins a PackedVector2Array in a square of
 ## 100, panels an Array of PackedInt32Array, inks a colour "#rrggbb" a

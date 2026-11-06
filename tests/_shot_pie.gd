@@ -6,7 +6,12 @@ extends SceneTree
 ## bulb's lit clues and its mark, an open baker's ringed clues, a caught
 ## baker's line, a dimmed clue, the win settled and the day reopened from its card, with the draw
 ## calls of each frame. `tut` shoots a tutorial page played a while; `card`
-## the menu card beside Market Sums'; `lang=pt` plays it in that language. Puts nothing in the player's save.
+## the menu card beside Market Sums'; `lang=pt` plays it in that language.
+## `theme` (or `night=YYYYMMDD`): the newest cached night's 12 (else 10) is
+## the win's pie and its things the caught bakers' lines, and the win adds
+## `theme_fade`, `theme_drop`, `theme_paint`, `theme_whole`; `fakeg` gives
+## every thing a masculine pt/es gender so pt/es lines show before the night
+## sends one. Puts nothing in the player's save.
 
 var _menu: Node
 var _host: Node
@@ -18,6 +23,8 @@ var _f := 0
 var _step := 0
 var _diag: Control
 var _lang := ""
+var _night := ""
+var _fakeg := false
 const Gen = preload("res://puzzles/pie_gen.gd")
 
 func _initialize() -> void:
@@ -32,6 +39,12 @@ func _initialize() -> void:
 			_step = 60
 		elif a.begins_with("lang="):
 			_lang = a.substr(5)
+		elif a == "theme":
+			_night = "newest"
+		elif a.begins_with("night="):
+			_night = a.substr(6)
+		elif a == "fakeg":
+			_fakeg = true
 		else:
 			_dir = a
 	var progress = load("res://core/progress.gd")
@@ -87,6 +100,8 @@ func _process(_delta: float) -> bool:
 		return false
 	if _b == null:
 		_b = _host._puzzle
+		if _night != "":
+			_theme_board()
 	var st = _b.state()
 	match _step:
 		0:
@@ -168,6 +183,10 @@ func _process(_delta: float) -> bool:
 			if _f == 5040:
 				_shot("midway")
 		6:
+			if _night != "":
+				for at in [[6062, "theme_fade"], [6078, "theme_drop"], [6100, "theme_paint"], [6150, "theme_whole"]]:
+					if _f == at[0]:
+						_shot(at[1])
 			if _f == 6012:
 				_shot("won_early")
 			if _f == 6240:
@@ -197,3 +216,37 @@ func _process(_delta: float) -> bool:
 				_shot("tut%d_b" % _page)
 				return true
 	return false
+
+## The night's thing for the pie and its things for the lines, as the board
+## would read them from the phone's cache.
+func _theme_board() -> void:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var pick := String(files[-1]) if _night == "newest" else "pictures-%s-content.json" % _night
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + pick))
+	var B = load("res://puzzles/pie2d.gd")
+	for side in B.THEMED_SIZES:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			var lang: String = TranslationServer.get_locale().substr(0, 2)
+			var nm := String(p.name.get(lang, p.name.en))
+			print("theme: ", pick, " ", side, " ", p.id)
+			_b._theme = {"id": "themed_" + String(p.id), "name": nm.left(1).to_upper() + nm.substr(1), "rows": p.rows}
+			break
+	var things: Array = []
+	var lang: String = TranslationServer.get_locale().substr(0, 2)
+	var keys: Array = doc.sizes.keys()
+	keys.sort_custom(func(a, b) -> bool: return int(a) < int(b))
+	for k in keys:
+		var n: Dictionary = doc.sizes[k].name
+		if lang == "en":
+			things.append(String(n.en).to_lower())
+		elif _fakeg or doc.sizes[k].has("g"):
+			var g: String = "m" if _fakeg else String(doc.sizes[k].g[lang])
+			things.append("%s %s" % [B.ARTICLES[lang][g], String(n[lang]).to_lower()])
+	_b._things = things
+	print("things: ", things)

@@ -8,7 +8,7 @@ import type {HoopPicture} from "./hoop";
 import type {Jelly} from "./jelly";
 import type {DayThing} from "./things";
 import type {Words} from "./words";
-import {Theme, Thing} from "./theme";
+import {Theme, Thing, genderOf} from "./theme";
 
 /**
  * The day's bead pictures, for Pixel Garden, Button Box and Toy Cannons
@@ -28,7 +28,17 @@ export interface Picture {
   id: string;
   /** What a board calls it: the thing's name, or the theme's for the scene. */
   name: {en: string; pt: string; es: string};
+  /** The pt/es name's gender and number (theme.ts `g`), when the theme
+   *  said it: Who Ate the Pie? names the thing with an article. */
+  g?: {pt: string; es: string};
   rows: string[];
+}
+
+/** A thing's name for a board, with its gender when the writer gave one. */
+function named(thing: Thing): Pick<Picture, "name" | "g"> {
+  const g = genderOf(thing);
+  return g === undefined ? {name: {en: thing.name, pt: thing.pt, es: thing.es}} :
+    {name: {en: thing.name, pt: thing.pt, es: thing.es}, g};
 }
 
 export interface Pictures {
@@ -270,8 +280,7 @@ export async function makeDay(day: number, theme: Theme,
           tried.look = item.thing === null ? await lookScene(rows, theme) : await lookThing(day, rows, item.thing, theme);
           if (!tried.look.ok) continue;
           tried.kept = true;
-          sizes[size] = {id: item.what, rows, name: item.thing === null ? theme.name :
-            {en: item.thing.name, pt: item.thing.pt, es: item.thing.es}};
+          sizes[size] = {id: item.what, rows, ...(item.thing === null ? {name: theme.name} : named(item.thing))};
         }
       } catch (e) {
         draft.error = String(e).slice(0, 300);
@@ -292,7 +301,7 @@ async function judge(day: number, theme: Theme, thing: Thing | null, tried: Trie
   if (!tried.look.ok || sizes[tried.size] !== undefined) return;
   tried.kept = true;
   sizes[tried.size] = {id: thing === null ? "scene" : thing.id, rows: tried.rows,
-    name: thing === null ? theme.name : {en: thing.name, pt: thing.pt, es: thing.es}};
+    ...(thing === null ? {name: theme.name} : named(thing))};
 }
 
 /** Rows a text model answered, when they are the band's side in beads. */

@@ -145,6 +145,31 @@ static func pie(r: float, slices: int, gone: int) -> ArrayMesh:
 		_crumbs(b, Vector2.from_angle(mid) * pr * 0.5 * Vector2(1.0, 0.6), pr * 0.3, 3)
 	return _keep(key, b)
 
+## The day's pie seen from above (the daily theme, 2026-11-06), `r` the
+## dish's radius, centre at the origin: its shadow, the dish and its blue
+## rim, a crimped crust ring and a pale pastry top the day's thing is laid
+## on in beads (puzzles/pie2d.gd). TOP_REACH of `r` is the pastry's.
+const TOP_REACH := 0.7
+static func pie_top(r: float) -> ArrayMesh:
+	var key := "pie_top:%d" % roundi(r * 2.0)
+	if _cache.has(key):
+		return _cache[key]
+	var b := Face.Builder.new()
+	Scenery.soft_disc(b, Vector2(0.0, r * 0.08), r * 1.1, r * 0.3, Color(SHADE, 0.22))
+	b.disc(Vector2(0.0, r * 0.05), r, DISH_DEEP)
+	b.disc(Vector2.ZERO, r, DISH)
+	b.stroke(Face.Builder.ring(Vector2.ZERO, r * 0.94, r * 0.94), r * 0.035, DISH_RIM, true)
+	b.disc(Vector2(0.0, r * 0.03), r * 0.86, CRUST_DEEP)
+	b.disc(Vector2.ZERO, r * 0.85, CRUST)
+	# the crimp: little lit pinches all round the crust
+	var n := 22
+	for k in n:
+		var a := TAU * k / n
+		b.disc(Vector2.from_angle(a) * r * 0.78, r * 0.07, CRUST_LIT)
+	b.disc(Vector2(0.0, r * 0.015), r * (TOP_REACH + 0.015), CRUST_DEEP)
+	b.disc(Vector2.ZERO, r * TOP_REACH, CRUST_LIT)
+	return _keep(key, b)
+
 static func _crumbs(b: Face.Builder, at: Vector2, spread: float, n: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = n * 977 + roundi(at.x * 3.0)

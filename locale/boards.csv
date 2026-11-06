@@ -3079,6 +3079,10 @@ PI_QUIP_4,“One slice. Maybe two.”,“Uma fatia. Talvez duas.”,“Un trozo.
 PI_QUIP_5,“I’d do it again.”,“Faria tudo de novo.”,“Lo volvería a hacer.”
 PI_QUIP_6,“It was looking at me!”,“Ela estava olhando pra mim!”,“¡Me estaba mirando!”
 PI_QUIP_7,“Crumbs. Caught.”,“Farelos. Fui pego.”,“Migas. Me pillaron.”
+PI_TQUIP_0,“I ate it with the %s as my only witness.”,“Comi com %s de testemunha.”,“Me lo comí con %s de testigo.”
+PI_TQUIP_1,“I was only admiring the %s… and then the pie was gone.”,“Eu só estava admirando %s… e a torta sumiu.”,“Solo estaba admirando %s… y el pastel desapareció.”
+PI_TQUIP_2,“Guilty. I left the %s where the pie was and hoped nobody would notice.”,“Culpado. Deixei %s no lugar da torta e torci pra ninguém notar.”,“Culpable. Dejé %s en lugar del pastel, a ver si nadie lo notaba.”
+PI_WIN_THEME,On the pie: %s! %s,Na torta: %s! %s,En el pastel: ¡%s! %s
 PI_WIN,"Every baker proven, %d of them with crumbs.","Todos provados, %d com farelos.","Todos probados, %d con migas."
 PI_WIN_CLEAN,Not one slip.,Nenhum deslize.,Ni un desliz.
 PI_WIN_SLIPS_ONE,%d slip on the way.,%d deslize no caminho.,%d desliz por el camino.
