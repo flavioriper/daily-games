@@ -8,7 +8,7 @@ import anthropic
 from pipecat.processors.aggregators.llm_context import LLMContext
 
 from agent.tools import TIMEOUT, result_text
-from studio.brains import CHAT_REASONING, GATEWAY_URL, GLM_THINKING, GLM_URL, openai_units
+from studio.brains import CHAT_REASONING, GATEWAY_URL, GLM_THINKING, GLM_URL, neon_url, openai_units
 from voice.foley import strip_tags
 from voice.prompt import system_prompt
 from voice.steer import PolicySteer
@@ -25,6 +25,7 @@ OPENAI_COMPATIBLE = {
     "cerebras": ("CEREBRAS_API_KEY", "https://api.cerebras.ai/v1"),
     "gateway": ("AI_GATEWAY_API_KEY", GATEWAY_URL),
     "glm": ("GLM_API_KEY", GLM_URL),
+    "neon": ("NEON_AI_GATEWAY_TOKEN", None),  # base read at call time: neon_url()
 }
 
 
@@ -60,7 +61,8 @@ async def llm_reply(card, system: str, messages: list[dict], deps, tools=None) -
     from openai import AsyncOpenAI
 
     env, base = OPENAI_COMPATIBLE[provider]
-    extra = {"reasoning_effort": CHAT_REASONING} if provider == "openai" else GLM_THINKING if provider == "glm" else {}
+    base = neon_url() if provider == "neon" else base
+    extra = {"reasoning_effort": CHAT_REASONING} if provider in ("openai", "neon") else GLM_THINKING if provider == "glm" else {}
     client = AsyncOpenAI(api_key=os.environ[env], base_url=base)
     if tools:
         return await tool_reply(client, model, [{"role": "system", "content": system}, *messages], extra, tools, sum(m["role"] == "user" for m in messages))
