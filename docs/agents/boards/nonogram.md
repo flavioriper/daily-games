@@ -255,3 +255,50 @@ of the first two: "recommended is perfect, go for it".
   Insane's 15 x 17 both get a card. Peaks 94-111 draw calls on
   `opengl3_angle`; `_win.gd -- nonogram` PASS; suite 303252/0. Unseen on a
   phone.
+
+### The day's thing (2026-11-06)
+
+Wave 2 of the daily theme roadmap (`docs/superpowers/specs/2026-10-13-daily-theme-design.md`,
+memory `daily-theme-roadmap`), built unattended on the user's "integrate the
+daily theme into all games, get the next on the list". Free: the phone reads
+the night's `pictures` doc, no server change.
+
+- **Medium and Hard draw one of the night's things** (`State.themed`, from
+  `_night_pictures`): Medium tries the 10, 24, 32, Hard the 12, 32, 24, 10
+  (each size is a different thing of the theme, so the two bands mostly
+  differ). Each is cut with `PlanesState.cut_shape(rows, box, false)` (the
+  `false` keeps bead names) to the day's drawn box, then the band's others.
+- **Drawn, not a lump**: a cut is tried first as a line picture
+  (`State.drawn_cells`: its edge and details, the inside cells of the body's
+  bead blank), then whole. Kept when line logic alone fills it (the no-guess
+  rule, `Gen.Lines`), it is at least `MIN_SIDE` a side and `THEMED_AREA` of
+  the band's fallback square, and fills no more than `THEMED_FULL` (0.75).
+  The whole silhouettes of the night's outlined things were 0.8-ish blobs.
+- **No draw off the rng**: `Gen.shape_for` still draws first; a themed day
+  deals the same everywhere, and a day without a theme (or one whose things
+  all fail) deals exactly as before.
+- **Decided for the user**: Easy (5-7 a side) and **Insane stay unthemed**.
+  Measured over the bank's 60 single things (`tests/_probe_ng_theme.gd`):
+  themed cuts at Insane's sizes line-solve in 3-4 sweeps, Insane's own
+  `Gen.hardest` pictures in 6-16; the user asked for Insane "way harder".
+  Medium themed: 3-7 sweeps against the generator's 2-5; Hard 3-7 against
+  3-6; 20 of 20 bank days took a thing on both bands; a deal is under 10 ms.
+  On the cached nights 20261103-07 every Medium and Hard took a thing
+  (pear, birdbath, lemon, jug, moon, flame, dress, jumper, vase, cactus pot).
+- **The reveal** (the picture-logic convention: the solved picture takes its
+  colours and its name): `_beaded` lerps a tile's three colours to its bead
+  (`Pal.PG_BEADS`; beads over `PAINT_PALE` luminance shaded so white and
+  cream read on the paper) on the win light's diagonal timing
+  (`WIN_GLINT_*`), inside the floor mesh: no new draw calls (peak 150 at the
+  party on `opengl3_angle`, as before). A reopened solved day shows it at
+  once. Never during play: the colours and the name would give it away, and
+  the picture card still shows only the player's tiles.
+- The win card's subtitle and the sprout's line are `NG_SOLVED_THEME`
+  ("Today's picture: %s.", en/pt/es, the name already in the player's
+  language); `NG_WIN` and the `NG_LOOKS_*` guesses stay for other days.
+- The `theme` cue (Shelves' and Clues', bank wraps climbing an octave) rings
+  as the colour starts to pour, felt as a good; `day_dict` says
+  `"source": "theme"` and the thing's id.
+- Checked: `_shot_nonogram.gd -- d=1|d=2 solve` and `d=1 restore` on today's
+  cached night (opengl3_angle, 810x1440), `_win.gd -- nonogram` PASS. Owed:
+  a phone, the user's ear on the cue, pt/es read by a native.

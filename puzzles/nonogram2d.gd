@@ -52,6 +52,7 @@ const Mosaic = preload("res://ui/faces/mosaic_tile.gd")
 ## read as a dot rather than as the player's "not here".
 const CrossMark = preload("res://ui/faces/cross_mark.gd")
 const Scenery = preload("res://ui/flat/scenery.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 const MushroomFace = preload("res://ui/faces/mushroom_face.gd")
 const BeeFace = preload("res://ui/faces/bee_face.gd")
 const Seal = preload("res://ui/flat/seal.gd")
@@ -169,6 +170,13 @@ const GLINT_TIME := 0.3
 const WIN_GLINT_AT := 1.1
 const WIN_GLINT_STEP := 0.06
 const WIN_GLINT_TIME := 0.3
+## The reveal's beads (core/palette.gd), and how far a painted tile's edge
+## and rim step off its face, as the slate tile's do.
+const PAINT_BEADS := Pal.PG_BEADS
+const PAINT_DEEP := 0.32
+const PAINT_RIM := 0.22
+const PAINT_PALE := 0.8
+const PAINT_PALE_SHADE := 0.14
 
 # --- the third polish (docs/superpowers/specs/2026-09-30-nonogram-polish-design.md) ---
 ## The hearts over the floor: One Line's, Light Up's, Tents' and Shikaku's
@@ -533,6 +541,7 @@ const HAPTICS := {
 	"heart_lost": Haptics.BAD,
 	"out_of_hearts": Haptics.LOSE,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 func _ready() -> void:
@@ -584,7 +593,7 @@ func _layer(nm: String, z: int, draw: Callable) -> Control:
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
-	state.setup(rng, difficulty, bank_step)
+	state.setup(rng, difficulty, bank_step, _night_pictures(difficulty))
 	max_hearts = State.HEARTS[state.band]
 	max_moves = state.moves_budget()
 	_heart_used = false
@@ -610,6 +619,18 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tip_idx = 0
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
+
+## The night's things this band may draw (State.THEMED_SIZES), on a daily
+## dealt first; [] on any other deal, which then deals as it always has.
+func _night_pictures(difficulty: int) -> Array:
+	var out: Array = []
+	if bank_step != 0 or daily_key == 0:
+		return out
+	for side in State.THEMED_SIZES[clampi(difficulty, 0, State.THEMED_SIZES.size() - 1)]:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			out.append(pic)
+	return out
 
 ## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). Insane
 ## comes out of its bank when the bank has the day (State.setup); `tumbled`
@@ -640,7 +661,8 @@ func day_dict() -> Dictionary:
 		if bool(state.tumbled[i]):
 			tumbled.append(i)
 	var out := {
-		"source": "bank" if banked else "generator", "kind": "grid",
+		"source": "theme" if not state.theme.is_empty() else ("bank" if banked else "generator"),
+		"kind": "grid", "theme": String(state.theme.get("id", "")),
 		"payload": {"w": w, "h": h, "rows": state.row_clues, "cols": state.col_clues,
 			"tumbled": tumbled},
 		"solution": {"bits": bits},
@@ -1464,9 +1486,33 @@ func _draw_tile(cell: Vector2i, t: float, grout: float) -> void:
 		return
 	var at := cell_to_local(cell.y, cell.x) + _offset(cell, t)
 	var since := t - float(_wrong.get(cell, -100.0))
-	_put_tile(grout, Mosaic.tile_colours(state.locked.has(cell), grout, _alpha(cell, t),
-		Motion.flash_level(since), _tone(cell), _shine(cell, t)),
+	_put_tile(grout, _beaded(cell, t, Mosaic.tile_colours(state.locked.has(cell), grout, _alpha(cell, t),
+		Motion.flash_level(since), _tone(cell), _shine(cell, t))),
 		Transform2D(Motion.wobble_angle(since), grow, 0.0, at))
+
+## On a themed day the solved picture takes its own beads (the reveal every
+## picture-logic game ends on): the colour pours on with the win's light,
+## diagonal by diagonal, and stays. A reopened solved day shows it at once.
+## Never before the solve: the colours would tell the answer.
+func _beaded(cell: Vector2i, t: float, cols: Array) -> Array:
+	if _solved_at == -INF or state.theme.is_empty():
+		return cols
+	var bead = PAINT_BEADS.get(String((state.theme.beads as Dictionary).get(cell, "")))
+	if bead == null:
+		return cols
+	var k := _dec((t - _solved_at - WIN_GLINT_AT - (cell.x + cell.y) * WIN_GLINT_STEP) / WIN_GLINT_TIME)
+	if k <= 0.0:
+		return cols
+	var face: Color = bead
+	# A white or cream bead would vanish on the paper the picture hangs on.
+	if face.get_luminance() > PAINT_PALE:
+		face = face.darkened(PAINT_PALE_SHADE)
+	var tone := _tone(cell) * Mosaic.TONE * 0.5
+	face = face.lightened(tone) if tone > 0.0 else face.darkened(-tone)
+	var a: float = (cols[0] as Color).a
+	return [Color((cols[0] as Color).lerp(face.darkened(PAINT_DEEP), k), a),
+		Color((cols[1] as Color).lerp(face.lightened(PAINT_RIM), k), a),
+		Color((cols[2] as Color).lerp(face, k), a)]
 
 ## A pebble: the same arrival, sink and lean, and on the win it clears away
 ## in a scatter -- a hard board finishes with 38 of its 81 cells under
@@ -2260,9 +2306,11 @@ func share_glyphs() -> String:
 
 ## The board *is* the reward here, more than on any other screen, so the
 ## reveal is the win: the win screen shows no cast, and what stays on the card
-## under it is the picture as a single shape.
+## under it is the picture as a single shape. On a themed day the subtitle
+## names the thing the picture is.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": tr("NG_WIN")}
+	var name := String(state.theme.get("name", ""))
+	return {"faces": [], "subtitle": tr("NG_SOLVED_THEME") % name if name != "" else tr("NG_WIN")}
 
 func win_delay() -> float:
 	return Motion.REDUCED_TIME if Motion.reduce else WIN_WAIT + PARTY_EXTRA
@@ -2287,6 +2335,8 @@ func _on_solved() -> void:
 						"time": Motion.SOLVE_TIME}
 	_say(tr("NG_SOLVED"), Face.Expr.JOY)
 	fx.cue("solved")
+	if not state.theme.is_empty():
+		_after(0.0 if Motion.reduce else WIN_GLINT_AT, func() -> void: fx.cue("theme"))
 	_busy_for(maxf(_solve_delay(Vector2i(state.w, state.h)) + Motion.SOLVE_TIME,
 		maxf(GONE_DELAY + GONE_TIME, CLEAR_DELAY + CLEAR_SPREAD + CLEAR_TIME)))
 	_busy_for(WIN_GLINT_AT + (state.w + state.h) * WIN_GLINT_STEP + WIN_GLINT_TIME)
@@ -3170,10 +3220,13 @@ func _party() -> void:
 				"tint": Pal.AUTUMN_LEAVES[k % Pal.AUTUMN_LEAVES.size()]})
 		_after(lead + 0.3, fx.cue.bind("leaves"))
 
-## What the sprout thinks the finished picture looks like: one of LOOKS
-## silly guesses, picked by the picture itself, so a day always gets the
-## same one.
+## What the sprout says the finished picture is: the day's thing by its
+## name on a themed day, else one of LOOKS silly guesses, picked by the
+## picture itself, so a day always gets the same one.
 func _looks() -> String:
+	var name := String(state.theme.get("name", ""))
+	if name != "":
+		return tr("NG_SOLVED_THEME") % name
 	var bits := ""
 	for row in state.bitmap:
 		for v in row:

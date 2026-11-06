@@ -541,8 +541,9 @@ static func bank_shapes(box := SHAPE_BOX, least := SHAPE_MIN) -> Array:
 ## The filled cells of a picture's `rows` ("." bare), trimmed to what they
 ## cover and scaled, cell centre by cell centre, to fill `box` with their
 ## own proportions: {cols, rows, cells (cell -> colour family)}, or {} for a
-## picture with nothing on.
-static func cut_shape(pic_rows: Array, box: Vector2i) -> Dictionary:
+## picture with nothing on. `family` false keeps each cell's own bead name
+## (Nonogram's reveal paints the picture in its beads).
+static func cut_shape(pic_rows: Array, box: Vector2i, family := true) -> Dictionary:
 	var lo := Vector2i(1 << 20, 1 << 20)
 	var hi := Vector2i(-1, -1)
 	for y in pic_rows.size():
@@ -566,7 +567,7 @@ static func cut_shape(pic_rows: Array, box: Vector2i) -> Dictionary:
 			var sx := lo.x + int(floorf((float(x) + 0.5) * float(w) / float(c)))
 			if sx < row.length() and row[sx] != ".":
 				var bead := String(ThemedPictures.letters().get(row[sx], row[sx]))
-				cells[Vector2i(x, y)] = String(FAMILY.get(bead, bead))
+				cells[Vector2i(x, y)] = String(FAMILY.get(bead, bead)) if family else bead
 	return {"cols": c, "rows": r, "cells": cells}
 
 ## Carves a board backwards out of an empty sky (the flat spec's section 5).

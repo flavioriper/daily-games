@@ -20,6 +20,7 @@ extends RefCounted
 ## Spec: docs/superpowers/specs/2026-09-18-nonogram-flat-design.md, section 3.
 
 const Gen = preload("res://puzzles/nonogram_gen.gd")
+const Planes = preload("res://puzzles/planes_state.gd")
 
 const BLANK := 0
 const FILL := 1
@@ -76,11 +77,44 @@ var auto: Dictionary = {}
 ## "auto": bool}], `auto` being whether the cell's old mark was the board's.
 var history: Array = []
 
-func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+## The day's theme (wave 2 of the daily theme roadmap, 2026-11-06): on
+## Medium and Hard the hidden picture is one of the night's things
+## (core/themed_pictures.gd: its 10, 12, 24 and 32 are each a different thing
+## of the theme, drawn with room round it), cut to the band's box with its
+## own proportions. Easy's 5 to 7 a side cannot show a
+## thing, and Insane stays on Gen.hardest: a themed silhouette line-solves in
+## 3-4 sweeps where Insane's own take 6-16. The sizes are tried in order.
+## Medium leads with the 10 and Hard with the 12, so the two bands mostly
+## draw different things.
+const THEMED_SIZES := [[], [10, 24, 32], [12, 32, 24, 10], []]
+## The thing must line-solve (the no-guess rule), cover at least this share
+## of the band's fallback square, at least MIN_SIDE a side, and leave some
+## blanks: the night's things are outlined shapes, and a whole silhouette is
+## a lump.
+##
+## Each cut is tried drawn first, as a picture-logic picture is drawn: its
+## edge and details, the body's inside left blank (drawn_cells); then whole. A drawn cut keeps THEMED_DRAWN of the thing.
+const THEMED_AREA := 0.75
+const MIN_SIDE := 5
+const THEMED_FULL := 0.75
+const THEMED_DRAWN := 0.3
+## {id, name, beads (Vector2i -> bead name, core/palette.gd PG_BEADS)} when
+## the picture is the day's thing, {} otherwise. Never shown during play:
+## the board paints the beads on only once the picture is solved.
+var theme: Dictionary = {}
+
+## `pictures` are the night's things for this band, in THEMED_SIZES' order
+## ({id, name, rows}); [] deals as before, the same draws off `rng`.
+func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0, pictures: Array = []) -> void:
 	band = clampi(difficulty, 0, SIZES.size() - 1)
 	var out: Dictionary = {}
 	var shape := Gen.shape_for(rng, band)
-	if band == 3:
+	theme = {}
+	if not pictures.is_empty():
+		out = themed(pictures, band, shape)
+	if not out.is_empty():
+		theme = out.theme
+	elif band == 3:
 		out = Gen.hardest(rng, shape.x, shape.y)
 	else:
 		out = Gen.generate(rng, shape.x, shape.y)
@@ -110,6 +144,77 @@ func setup(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
 	locked = {}
 	auto = {}
 	history = []
+
+## The first of `pictures` that cuts, at the day's drawn box and then the
+## band's others, to a picture line logic fills alone and THEMED_* allow:
+## {bitmap, rows, cols, w, h, ok, theme}, or {}. No draw off any rng, so a
+## themed day deals the same on every phone and on every reopening.
+static func themed(pictures: Array, p_band: int, drawn: Vector2i) -> Dictionary:
+	var boxes: Array = [drawn]
+	for s in Gen.SHAPES[clampi(p_band, 0, Gen.SHAPES.size() - 1)]:
+		var box := Vector2i(int(s[0]), int(s[1]))
+		if not boxes.has(box):
+			boxes.append(box)
+	var least := float(SIZES[p_band] * SIZES[p_band]) * THEMED_AREA
+	for pic in pictures:
+		for box in boxes:
+			var cut := Planes.cut_shape(pic.rows, box, false)
+			if cut.is_empty():
+				continue
+			var w: int = cut.cols
+			var h: int = cut.rows
+			if w < MIN_SIDE or h < MIN_SIDE or float(w * h) < least:
+				continue
+			var whole: Dictionary = cut.cells
+			for on: Dictionary in [drawn_cells(whole), whole]:
+				if float(on.size()) < float(whole.size()) * THEMED_DRAWN \
+						or float(on.size()) > float(w * h) * THEMED_FULL:
+					continue
+				var got := _solves(on, w, h)
+				if not got.is_empty():
+					got["theme"] = {"id": String(pic.id), "name": String(pic.get("name", "")),
+						"beads": on}
+					return got
+	return {}
+
+## A cut drawn as a line picture: its edge (a cell beside the void or the
+## board's border) and its details kept, the inside cells of the body's bead
+## (the one most inside cells wear) left blank.
+static func drawn_cells(cells: Dictionary) -> Dictionary:
+	var inside := {}
+	var count := {}
+	for c: Vector2i in cells:
+		if [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN].all(
+				func(d: Vector2i) -> bool: return cells.has(c + d)):
+			inside[c] = true
+			count[cells[c]] = int(count.get(cells[c], 0)) + 1
+	var body := ""
+	for bead in count:
+		if body == "" or int(count[bead]) > int(count[body]):
+			body = bead
+	var out := {}
+	for c in cells:
+		if not (inside.has(c) and cells[c] == body):
+			out[c] = cells[c]
+	return out
+
+## `on` (cell -> bead) as a board when line logic fills it alone:
+## {bitmap, rows, cols, w, h, ok}, else {}.
+static func _solves(on: Dictionary, w: int, h: int) -> Dictionary:
+	var bmp: Array = []
+	for y in h:
+		var row: Array = []
+		for x in w:
+			row.append(1 if on.has(Vector2i(x, y)) else 0)
+		bmp.append(row)
+	var c := Gen.clues_of(bmp, w, h)
+	var straight: Array = []
+	for i in w + h:
+		straight.append(false)
+	var lines := Gen.Lines.new(c.rows, c.cols, straight)
+	if not lines.matches(lines.line_solve(), bmp):
+		return {}
+	return {"bitmap": bmp, "rows": c.rows, "cols": c.cols, "w": w, "h": h, "ok": true}
 
 # --- reading the board ---
 

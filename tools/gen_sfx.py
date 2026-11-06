@@ -662,6 +662,10 @@ SETS = {
         "bee":      ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.12:7,5", "cut:0.55"),
         "bloom":    ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0:2", "cut:0.45"),
         "pebbles":  ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.4", "notes:0.07:1,3,1,4", "tight"),
+        # 2026-11-06: a themed day's picture takes its colours after the
+        # solve (the daily theme, wave 2): Shelves' and Clues' theme cue, the
+        # bank's wraps climbing an octave as the colour pours on.
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         # Hearts, the wrong tile turned out, and the party.
         "heart_lost":    ("a soft felt-mallet marimba two-note fall, a small gentle 'oh', warm and muffled, never a buzzer", 0.6, -15),
         "slip":     ("a small ceramic tile lifted out of its socket with a soft hollow wooden pop, and a tiny pebble set down in its place, warm and quiet", 0.6, -12, COZY),

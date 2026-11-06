@@ -181,6 +181,7 @@ NG_WRONG_N,%d tiles are in the wrong place.,%d peças estão no lugar errado.,%d
 NG_ALL_RIGHT,Every tile you have laid belongs to the picture.,Todas as peças que você colocou fazem parte do desenho.,Todas las fichas que pusiste son parte del dibujo.
 NG_RESET,"The floor is cleared. The hints you spent are not refunded, only unpinned.","Tudo limpo. As dicas usadas não voltam, só deixam de estar fixas.","Todo limpio. Las pistas usadas no se devuelven, solo se sueltan."
 NG_SOLVED,There it is. The picture you were counting towards.,Aí está. O desenho que você vinha contando.,Ahí está. El dibujo que venías contando.
+NG_SOLVED_THEME,Today's picture: %s.,Desenho de hoje: %s.,Dibujo de hoy: %s.
 NG_WIN,The numbers made a picture.,Os números viraram um desenho.,Los números formaron un dibujo.
 QN_TIP_ONE_EACH,"One queen in every row, every column and every colour.","Uma rainha em cada linha, cada coluna e cada cor.","Una reina en cada fila, cada columna y cada color."
 QN_TIP_SEES,A queen crosses out every seat she can see.,Uma rainha risca todas as casas que ela vê.,Una reina tacha todas las casillas que ve.
