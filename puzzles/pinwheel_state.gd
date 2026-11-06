@@ -75,6 +75,8 @@ const SQUARES := ["🟨", "🟦", "🟥", "🟩", "🟪", "🟧", "🟫", "⬜"]
 ## Unfinished, in a share that cannot be taken.
 const BARE := "⬛"
 const STAINED := BARE
+## A themed frame's square outside the day's thing, in the share.
+const VOID_GLYPH := "◽"
 
 var cols: int = 0
 var rows: int = 0
@@ -135,6 +137,11 @@ var cover := PackedInt32Array()
 var _pin_of: Array = []
 ## Cell index -> the piece pinned there, -1 for none.
 var _pinned_at := PackedInt32Array()
+## A themed frame's squares outside the day's thing (the daily theme,
+## 2026-11-06): Vector2i -> true. No ground, never covered, never bare.
+var voids: Dictionary = {}
+## {id, name, beads (Vector2i -> bead name)} on a themed frame, else {}.
+var theme: Dictionary = {}
 
 static func hints_for(d: int) -> int:
 	return int(HINTS_BY[clampi(d, 0, HINTS_BY.size() - 1)])
@@ -142,14 +149,42 @@ static func hints_for(d: int) -> int:
 static func hearts_for(d: int) -> int:
 	return int(HEARTS_BY[clampi(d, 0, HEARTS_BY.size() - 1)])
 
-func setup(rng: RandomNumberGenerator, d: int) -> void:
+## `pictures` are the night's things Easy to Hard may cut the frame to (the
+## daily theme, 2026-11-06), in Gen.THEMED_SIZES order; each is tried off its
+## own rng (`rng.seed ^ hash(id)`), so a cut that deals nothing leaves the
+## plain frame the same draws off `rng` as before the theme.
+func setup(rng: RandomNumberGenerator, d: int, pictures: Array = []) -> void:
 	difficulty = clampi(d, 0, Gen.BANDS.size() - 1)
+	if difficulty < Gen.THEMED_SIZES.size():
+		for pic: Dictionary in pictures:
+			var shape := Gen.shape_fit(pic.get("rows", []), difficulty)
+			if shape.is_empty():
+				continue
+			var r := RandomNumberGenerator.new()
+			r.seed = rng.seed ^ hash(String(pic.get("id", "")))
+			var got := Gen.generate(r, difficulty, shape, Gen.THEME_ATTEMPTS)
+			if got.is_empty():
+				continue
+			got["voids"] = shape.voids
+			got["theme"] = {"id": String(pic.get("id", "")), "name": String(pic.get("name", "")),
+				"beads": shape.beads}
+			take(got, difficulty)
+			return
 	take(Gen.generate(rng, difficulty), difficulty)
+
+## A square outside a themed frame's thing: no ground, nothing lies on it.
+func is_void(c: int, r: int) -> bool:
+	return voids.has(Vector2i(c, r))
+
+func themed() -> bool:
+	return not theme.is_empty()
 
 ## Holds frame `out` (`Gen.generate`'s dictionary, or a hand-made one: the
 ## tutorial's pages) as band `d`'s.
 func take(out: Dictionary, d: int) -> void:
 	difficulty = d
+	voids = out.get("voids", {})
+	theme = out.get("theme", {})
 	cols = int(out.cols)
 	rows = int(out.rows)
 	pins = out.pins
@@ -326,8 +361,9 @@ func steps_home(p: int) -> int:
 func is_solved() -> bool:
 	if cover.is_empty():
 		return false
-	for n: int in cover:
-		if n != 1:
+	for i in cover.size():
+		var n: int = cover[i]
+		if n != 1 and not (n == 0 and voids.has(cell_of(i))):
 			return false
 	return true
 
@@ -557,6 +593,9 @@ func reading_chain() -> Array:
 	var taken := PackedInt32Array()
 	taken.resize(n)
 	taken.fill(-1)
+	# A void needs no piece: the reading never asks who covers it.
+	for v: Vector2i in voids:
+		taken[idx(v.x, v.y)] = shapes.size()
 	var queue: Array = []
 	for p in shapes.size():
 		if done[p] >= 0:
@@ -652,7 +691,9 @@ func share_glyphs() -> String:
 	for r in rows:
 		for c in cols:
 			var n := depth(c, r)
-			if n <= 0:
+			if is_void(c, r):
+				out += VOID_GLYPH
+			elif n <= 0:
 				out += BARE
 			elif n > 1:
 				out += STAINED

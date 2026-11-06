@@ -249,3 +249,76 @@ reference on how good games does it". Built unattended.
   0, so the count pill stands on every band; the hill's cloud and kite
   step out by `_counting()` rather than by band, and the pill goes once
   the win screen takes over (it lay over the win line).
+
+### The frame is cut to the day's thing (2026-11-06)
+
+The daily theme's roadmap, wave 5 (`daily-theme-roadmap`), built
+unattended ("integrate the daily theme into all games, get the next on the
+list"). Bridges and Shikaku, the two C rows before it, were skipped: the
+roadmap asks the user first for both, and Bridges' open sea has nothing on
+it that could show a shape. The roadmap's own idea for Pinwheel (each piece
+printing a slice of the picture) was not built: the cloths are coloured by
+index for legibility in the opening, and a picture on them would both mix
+neighbours up and hand the player the answer. **The frame takes the thing's
+shape instead**, as Quilt's and Light Up's courts do.
+
+- **What the web said** (2026-11-06): the genre's daily reference lays its
+  pinned pieces in a plain rectangle and rewards with a score kept by how
+  late each piece last turned; no shaped frame and no picture on the solve
+  turned up in it or the nearby polyomino apps. The shaped frame and the
+  reveal are this board's own, so they are kept light: the rules unchanged,
+  the picture only after the last turn.
+- **Measured first** (`tests/_probe_pw_theme.gd`, 24 cached nights): Easy
+  24/24 themed, Medium 22/24, Hard 19/24; every themed frame proved to one
+  tiling (`count_tilings` with the voids, 0 with two); worst deal 15 ms;
+  par 13.5 / 17.5 / 22.2 against the plain frame's 13.4 / 17.3 / 24.1 off
+  the same seeds; the reading (`State.reading_chain`) carries 0.83 / 0.90 /
+  0.97 of the pieces against 0.82 / 0.84 / 0.94. A themed day is the same
+  day in a different outline.
+- `Gen.shape_fit(rows, d)`: the night picture cut into a square box of 6 /
+  7 / 8 (`THEME_BOXES`, a square or two over the band's frame), smoothed
+  (`HHGen._smooth`), holes filled (`QLGen._fill_holes`), cropped; kept when
+  it holds at least 0.8 of the band's squares and at most 0.9 of its own box.
+  Things tried in order `THEMED_SIZES` (Easy 10 then 12, Medium 12 then 10,
+  Hard 12 then 24), each off its own rng (`rng.seed ^ hash(id)`), so a cut
+  that deals nothing leaves the plain frame on the untouched draws.
+- `Gen.generate(rng, d, shape, THEME_ATTEMPTS)`: the grow marks the voids
+  `VOID` (-2) first; `orientations` treats a turn onto a void as out of frame,
+  so **it is skipped, never refused** (the header's rule holds unchanged);
+  `count_tilings` starts with the voids covered. The band's sizes are brought
+  to the thing's square count by `_theme_sizes` (threes and fours dropped or
+  added, one square nudged at the end, 2..5), `min_turns` scaled by the
+  squares. A themed deal that runs out hands back `{}` rather than a
+  fallback, so the day goes to the plain frame. Insane (Ribbons) is never cut.
+- State: `voids`, `theme` ({id, name, beads}), `is_void`, `themed()`;
+  `is_solved` lets a void stay bare, `reading_chain` counts voids as taken,
+  the share prints them `◽`. The board's `_cell_at` answers nothing on a
+  void, so a hold there marks nothing.
+- **The frame** (`_build_shaped_frame`): the rim, then the backing, a square
+  under each of the thing's squares reaching FRAME_PAD (and the rim past it)
+  beyond every side that faces a void; rules, puffs and ties only where the
+  thing's own squares meet. The layout still runs on the bounding box.
+- **The win** (`_theme_win`): PAINT_AT into the party the breeze lifts every
+  wheel off its pin (the wheel mesh fades and rises WHEEL_RISE of a cell
+  over WHEEL_LEAVE), and the cloth takes the picture's beads from the pins
+  outward, a square every PAINT_STEP, each tile swelling in over PAINT_TIME
+  (Light Up's tiles, one mesh, kept once down). The theme cue rings with
+  the first tiles, the card waits THEME_HOLD 0.9 s longer, and says
+  `PW_WIN_THEME` ("Every piece turned home: today's %s."). A reopened day
+  shows the picture, the wheels gone. Under reduce motion the picture is
+  simply there.
+- Sound: new `theme` (the boards' wrap run, 3/7/10/15); `refused` moved
+  from a kalimba note to the house tongue, three steps under the snag; the
+  Insane ribbon's `tug` from a HUSH button to the bank's token, low. The
+  refusal is felt now (TICK), the theme GOOD.
+- `tests/_shot_pinwheel.gd` modes `theme`, `theme_solve`, `theme_restore`
+  (the newest cached night, `night=` for another). opengl3_angle 810x1440:
+  Medium (cactus) peak 110 draw calls through the win; Easy reduce motion
+  peak 152 with the brain card up. `_win.gd -- pinwheel` PASS (plain: the
+  harness has no day); the pinwheel suites 11067/0.
+- Decided for the user, unconfirmed: the outline over the printed slices;
+  the wheels blowing off for the picture; Hard's 8 box (cell 137 at
+  810x1440, against the plain Hard's larger one). Owed: a phone, the ear
+  (theme, refused, tug), pt/es native read of the win line, and the nap cat
+  sitting on the bounding box's foot, which on a thing with a narrow foot
+  is beside it.

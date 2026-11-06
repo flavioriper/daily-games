@@ -1153,7 +1153,9 @@ SETS = {
         # 700 Hz. What travels on air is air: the whirl, the kite and the
         # ribbons are a breath of breeze each.
         "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-2", "tight"),
-        "refused":  ("a tiny soft kalimba note with a gentle little wobble, a kind 'that one stays', muffled and warm, very short", 0.5, -12, LINEN),
+        # A pinned-fast piece's refusal is the house's tongue (2026-11-06),
+        # two steps under the snag so the two never sound alike.
+        "refused":  ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -14, FOLEY, "bank:tongue", "cut:0.12", "notes:0:-3", "tight"),
         "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:0,-3", "tight"),
         "hint":     ("a gentle magical sparkle, three soft music box notes rising with a warm kalimba note underneath, cozy and kind", 1.0, -8, LINEN),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
@@ -1176,7 +1178,12 @@ SETS = {
         "tack":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.22", "notes:0.07:-2,0", "tight"),
         "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:4,1,-3"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, LINEN),
-        "tug":      ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1300", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        # A ribbon gone taut is a thing set down: the house's token, low.
+        "tug":      ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.14", "notes:0:-5", "tight"),
+        # A themed win (the daily theme, 2026-11-06): the cloth pours into the
+        # day's picture from the pins outward as the wheels blow off; the
+        # boards' theme cue, a run of wrap pops, here a breezy climb.
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.07:3,7,10,15", "tight"),
         # The party. kite: a long breath that rises. ribbons (Insane): the
         # breeze easing as they slip loose.
         "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:9,5,12"),

@@ -65,6 +65,7 @@ const PinWheel = preload("res://ui/faces/pin_wheel.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const Seal = preload("res://ui/flat/seal.gd")
 const NapCat = preload("res://ui/faces/nap_cat.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const Haptics = preload("res://core/haptics.gd")
 const World = preload("res://puzzles/pinwheel_world.gd")
@@ -362,6 +363,21 @@ const CAT_HOP_TIME := 0.32
 const CAT_HOP_H := 0.45
 const CAT_SETTLE := 0.25
 const CURL_AT := 2.3
+## A themed frame's win (the daily theme, 2026-11-06): PAINT_AT after the
+## party starts the breeze lifts the wheels off their pins over WHEEL_LEAVE,
+## and the cloth takes the day's picture from the pins outward, a square
+## every PAINT_STEP, each tile swelling in over PAINT_TIME. The win card
+## waits THEME_HOLD longer so the picture is whole under it.
+const PAINT_AT := 0.25
+const PAINT_STEP := 0.08
+const PAINT_TIME := 0.3
+const PAINT_SIDE := 0.9
+const PAINT_RADIUS := 0.16
+const PAINT_PALE := 0.82
+const PAINT_PALE_SHADE := 0.12
+const WHEEL_LEAVE := 0.45
+const WHEEL_RISE := 0.35
+const THEME_HOLD := 0.9
 ## The seal on the frame's lower right corner.
 const STAMP_AT := 1.2
 const STAMP_FROM := 1.8
@@ -509,6 +525,13 @@ var _reading: Dictionary = {}
 ## A held square: {"cell", "turns": [[piece, turn]], "at", "up"} (`up` -1
 ## while held).
 var _reach: Dictionary = {}
+## When a themed win's picture began to pour on from the pins (INF before,
+## and on a plain frame); `_paint_wait` each square's delay after it (its
+## steps from the nearest pin); `_paint_mesh` kept once every tile is down.
+var _paint_at := INF
+var _paint_wait: Dictionary = {}
+var _paint_mesh: ArrayMesh
+var _paint_done := false
 var _mark_mesh: ArrayMesh
 var _hold_taught := false
 var _heart_used := false
@@ -669,6 +692,8 @@ const HAPTICS := {
 	"heart_lost": Haptics.BAD,
 	"out_of_hearts": Haptics.LOSE,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
+	"refused": Haptics.TICK,
 }
 
 func _ready() -> void:
@@ -705,9 +730,21 @@ func _ready() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_close_card()
-	_state.setup(rng, difficulty)
+	_state.setup(rng, difficulty, _night_pictures(difficulty))
 	max_moves = _state.moves_budget()
 	_dealt()
+
+## The night's things Easy to Hard may cut the frame to (Gen.THEMED_SIZES):
+## only a daily dealt from its day, never New, and never Insane.
+func _night_pictures(difficulty: int) -> Array:
+	var out: Array = []
+	if bank_step != 0 or daily_key == 0 or difficulty >= State.Gen.THEMED_SIZES.size():
+		return out
+	for side in State.Gen.THEMED_SIZES[maxi(difficulty, 0)]:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			out.append(pic)
+	return out
 
 ## Everything a new frame starts from once the state holds it: the hearts,
 ## the rewards, nothing in flight, the shapes traced, the layout and the
@@ -767,6 +804,10 @@ func _deal() -> void:
 	_press_piece = -1
 	_reach = {}
 	_reading = {}
+	_paint_at = INF
+	_paint_wait = {}
+	_paint_mesh = null
+	_paint_done = false
 	_stars.clear()
 	Motion.stop(_dusk_tw)
 	modulate = Color.WHITE
@@ -977,7 +1018,7 @@ func _cell_at(local: Vector2) -> Vector2i:
 	var at := local - _origin()
 	var c := int(floor(at.x / cell))
 	var r := int(floor(at.y / cell))
-	if c < 0 or r < 0 or c >= _state.cols or r >= _state.rows:
+	if c < 0 or r < 0 or c >= _state.cols or r >= _state.rows or _state.is_void(c, r):
 		return Vector2i(-1, -1)
 	return Vector2i(c, r)
 
@@ -1416,10 +1457,18 @@ func _draw() -> void:
 		_wheel_mesh = _build_wheels(t)
 		_in_ref = false
 	var on := xf * _relay()
-	for m: ArrayMesh in [_still, _live, _stain_mesh, _rib_mesh, _wheel_mesh]:
+	for m: ArrayMesh in [_still, _live, _stain_mesh, _rib_mesh]:
 		if m != null:
 			draw_mesh(m, null, on, tint)
 			shown.append(m)
+	_draw_paint(t, xf, tint, shown)
+	if _wheel_mesh != null:
+		# A themed win's wheels lift off their pins on the breeze.
+		var gone := _wheels_gone(t)
+		if gone < 1.0:
+			var lift := Transform2D(0.0, Vector2(0.0, -WHEEL_RISE * _cell() * (1.0 - (1.0 - gone) * (1.0 - gone))))
+			draw_mesh(_wheel_mesh, null, lift * on, Color(1.0, 1.0, 1.0, seen * (1.0 - gone)))
+			shown.append(_wheel_mesh)
 	_mark_mesh = _build_marks(t)
 	if _mark_mesh != null:
 		draw_mesh(_mark_mesh, null, xf, tint)
@@ -1517,6 +1566,8 @@ func _reach_of(at: Vector2i) -> Array:
 ## faint rules between its cells, and a rim round the lot. It carries no
 ## clock at all, so it is built once a layout and not once a frame.
 func _build_frame() -> ArrayMesh:
+	if _state.themed():
+		return _build_shaped_frame()
 	var b := Face.Builder.new()
 	var cell := _cell()
 	var at := _origin() - Vector2.ONE * FRAME_PAD
@@ -1548,6 +1599,58 @@ func _build_frame() -> ArrayMesh:
 			b.stroke(PackedVector2Array([at2 + Vector2(d, -d), at2 + Vector2(-d, d)]), TIE_W * cell, tie)
 	b.stroke(panel, FRAME_RIM, Pal.LINE, true)
 	return _mesh(b)
+
+## A themed frame follows the day's thing: the rim, then the backing, a
+## square on each of its squares reaching FRAME_PAD (and the rim past it)
+## beyond the sides that face the void; rules, puffs and ties only where the
+## thing's own squares meet.
+func _build_shaped_frame() -> ArrayMesh:
+	var b := Face.Builder.new()
+	var cell := _cell()
+	var o := _origin()
+	for pass_i in 2:
+		var reach := FRAME_PAD + (FRAME_RIM if pass_i == 0 else 0.0)
+		var col: Color = Pal.LINE if pass_i == 0 else Pal.QUILT_BACK
+		for r in _state.rows:
+			for c in _state.cols:
+				if _state.is_void(c, r):
+					continue
+				var lo := o + Vector2(c, r) * cell
+				var hi := lo + Vector2.ONE * cell
+				if not _in_thing(c - 1, r):
+					lo.x -= reach
+				if not _in_thing(c, r - 1):
+					lo.y -= reach
+				if not _in_thing(c + 1, r):
+					hi.x += reach
+				if not _in_thing(c, r + 1):
+					hi.y += reach
+				b.polygon(PackedVector2Array([lo, Vector2(hi.x, lo.y), hi, Vector2(lo.x, hi.y)]), col)
+	var rule := Pal.QUILT_RULE
+	var w := maxf(2.0, cell * RULE_W)
+	var puff := Color(Pal.SURFACE, PUFF_ALPHA)
+	var tie := Color(Pal.LINE, 0.85)
+	var d := TIE_LEN * cell
+	for r in _state.rows:
+		for c in _state.cols:
+			if _state.is_void(c, r):
+				continue
+			var at := o + Vector2(c, r) * cell
+			if _in_thing(c + 1, r):
+				b.stroke(PackedVector2Array([at + Vector2(cell, 0.0), at + Vector2(cell, cell)]), w, rule, false, false)
+			if _in_thing(c, r + 1):
+				b.stroke(PackedVector2Array([at + Vector2(0.0, cell), at + Vector2(cell, cell)]), w, rule, false, false)
+			b.polygon(Face.Builder.round_rect(at + Vector2.ONE * PUFF_INSET * cell,
+				Vector2.ONE * (1.0 - 2.0 * PUFF_INSET) * cell, PUFF_R * cell), puff)
+			if _in_thing(c + 1, r) and _in_thing(c, r + 1) and _in_thing(c + 1, r + 1):
+				var at2 := at + Vector2.ONE * cell
+				b.stroke(PackedVector2Array([at2 + Vector2(-d, -d), at2 + Vector2(d, d)]), TIE_W * cell, tie)
+				b.stroke(PackedVector2Array([at2 + Vector2(d, -d), at2 + Vector2(-d, d)]), TIE_W * cell, tie)
+	return _mesh(b)
+
+## A square of a themed frame's thing (every square of a plain frame).
+func _in_thing(c: int, r: int) -> bool:
+	return c >= 0 and r >= 0 and c < _state.cols and r < _state.rows and not _state.is_void(c, r)
 
 ## Every piece that is not swinging, in index order: each its look under
 ## its transform, handed back while the plan is the one it was built from.
@@ -2604,6 +2707,10 @@ func restore_completed_board() -> void:
 	# In the past, so `_frame_of` reads a landed hop and a full warm edge and
 	# `_animating` finds nothing left of the wave.
 	_solved_at = t - 10.0
+	if _state.themed():
+		# A reopened themed day shows its picture, the wheels long blown off.
+		_paint_order()
+		_paint_at = t - 10.0
 	_tip_timer.stop()
 	_say(tr("PW_DONE"), Face.Expr.JOY)
 	_life_layer.queue_redraw()
@@ -2644,6 +2751,9 @@ func share_glyphs() -> String:
 ## pinwheels batch into one mesh and a Control per pin would be a node per
 ## pin of a thing with no face on it.
 func flat_win() -> Dictionary:
+	var name := String(_state.theme.get("name", ""))
+	if name != "":
+		return {"faces": [], "subtitle": tr("PW_WIN_THEME") % name}
 	if max_hearts <= 0 and max_moves <= 0 and _state.par > 0:
 		return {"faces": [], "subtitle": tr("PW_WIN_TAPS") % [_taps, _state.par]}
 	return {"faces": [], "subtitle": tr("PW_WIN")}
@@ -2657,7 +2767,7 @@ func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
 	var party := (_party_at - _now()) if _party_at < INF else PARTY_AT
-	return maxf(WIN_WAIT, maxf(0.0, party) + PARTY_TIME)
+	return maxf(WIN_WAIT, maxf(0.0, party) + PARTY_TIME) + (THEME_HOLD if _state.themed() else 0.0)
 
 func _on_solved() -> void:
 	_solved_at = _now()
@@ -3220,6 +3330,8 @@ func _party() -> void:
 	var now := _now()
 	var lead := 0.0 if Motion.reduce else PARTY_AT
 	_party_at = now + lead
+	if _state.themed():
+		_theme_win(now, lead)
 	_after(lead + 0.6, func() -> void:
 		_say(_cheer(), Face.Expr.JOY))
 	_cat_at = now if Motion.reduce else _party_at + CAT_AT
@@ -3680,6 +3792,7 @@ func day_dict() -> Dictionary:
 			stained += 1
 		elif d == 0:
 			bare += 1
+	bare -= _state.voids.size()
 	var ribbons: Array = []
 	var ties: Array = []
 	for r: Dictionary in _state.ribbons:
@@ -3691,8 +3804,12 @@ func day_dict() -> Dictionary:
 	if not ties.is_empty():
 		view["edges"] = ties
 		view["solution_edges"] = ties
+	for v: Vector2i in _state.voids:
+		puzzle[v.y * cols + v.x] = {"void": true}
+		answer[v.y * cols + v.x] = {"void": true}
 	var out := {
-		"source": "generator", "kind": "grid",
+		"source": "theme" if _state.themed() else "generator", "kind": "grid",
+		"theme": String(_state.theme.get("id", "")),
 		"payload": {"cols": cols, "rows": rows, "pins": pins, "turns": cycles,
 			"start": Array(_state.start), "pieces": dealt, "ribbons": ribbons},
 		"solution": {"answer": Array(_state.answer), "pieces": home},
@@ -3705,3 +3822,100 @@ func day_dict() -> Dictionary:
 	if not _state.ok:
 		out["budget_hit"] = true
 	return out
+
+# --- the daily theme (2026-11-06) ---
+
+## A themed frame's win: the breeze lifts every wheel off its pin, and the
+## cloth pours into the day's picture from the pins outward (`_paint_wait`,
+## steps from the nearest pin over the thing's squares). Under reduce motion
+## the wheels are simply gone and the picture there.
+func _theme_win(now: float, lead: float) -> void:
+	_paint_order()
+	if Motion.reduce:
+		_paint_at = now
+		fx.cue("theme")
+		_refresh()
+		return
+	_paint_at = now + lead + PAINT_AT
+	_after(lead + PAINT_AT + PAINT_STEP, fx.cue.bind("theme"))
+	var far := 0.0
+	for c in _paint_wait:
+		far = maxf(far, float(_paint_wait[c]))
+	_busy_for(lead + PAINT_AT + far + PAINT_TIME + 0.1)
+
+## Every square of the thing's delay after the picture starts: its steps
+## from the nearest pin, PAINT_STEP each.
+func _paint_order() -> void:
+	_paint_wait = {}
+	var front: Array = []
+	for p in _state.shapes.size():
+		var pin := _state.pin_cell(p)
+		_paint_wait[pin] = 0.0
+		front.append(pin)
+	var step := 0
+	while not front.is_empty():
+		step += 1
+		var next: Array = []
+		for c: Vector2i in front:
+			for dv: Vector2i in State.Gen.DIRS:
+				var q: Vector2i = c + dv
+				if _in_thing(q.x, q.y) and not _paint_wait.has(q):
+					_paint_wait[q] = PAINT_STEP * step
+					next.append(q)
+		front = next
+	_paint_mesh = null
+	_paint_done = false
+
+## How far `cell` has taken its tile of the day's picture, 0 to 1.
+func _paint_level(cell: Vector2i, now: float) -> float:
+	if _paint_at == INF or not _paint_wait.has(cell):
+		return 0.0
+	if Motion.reduce:
+		return 1.0
+	return clampf((now - _paint_at - float(_paint_wait[cell])) / PAINT_TIME, 0.0, 1.0)
+
+## How far a themed win's wheels have blown off their pins, 0 to 1 (0 on a
+## plain frame and before the picture).
+func _wheels_gone(now: float) -> float:
+	if _paint_at == INF:
+		return 0.0
+	if Motion.reduce:
+		return 1.0
+	return clampf((now - _paint_at) / WHEEL_LEAVE, 0.0, 1.0)
+
+## The solved themed frame as its picture: a raised tile on every square of
+## the thing in the picture's own bead, swelling in as the wave reaches it.
+## One mesh in board pixels, kept once every tile is down.
+func _draw_paint(now: float, xf: Transform2D, tint: Color, shown: Array) -> void:
+	if _paint_at == INF or not _state.themed() or now < _paint_at:
+		return
+	if _paint_mesh == null or not _paint_done:
+		var beads: Dictionary = _state.theme.get("beads", {})
+		var b := Face.Builder.new()
+		var all := true
+		var s := _cell()
+		var o := _origin()
+		for cell: Vector2i in _paint_wait:
+			var k := _paint_level(cell, now)
+			if k < 1.0:
+				all = false
+			if k <= 0.0:
+				continue
+			var bead = Pal.PG_BEADS.get(String(beads.get(cell, "")))
+			if bead == null:
+				continue
+			var face: Color = bead
+			if face.get_luminance() > PAINT_PALE:
+				face = face.darkened(PAINT_PALE_SHADE)
+			var e := Motion.back_out(k)
+			var side := Vector2.ONE * s * PAINT_SIDE * lerpf(0.4, 1.0, e)
+			var at := o + (Vector2(cell) + Vector2.ONE * 0.5) * s - side * 0.5
+			b.polygon(Face.Builder.round_rect(at + Vector2(0.0, s * 0.05), side, s * PAINT_RADIUS), Color(face.darkened(0.3), k))
+			b.polygon(Face.Builder.round_rect(at, side, s * PAINT_RADIUS), Color(face, k))
+			b.polygon(Face.Builder.round_rect(at + side * Vector2(0.16, 0.1), side * Vector2(0.36, 0.14), s * 0.05),
+				Color(face.lightened(0.45), 0.7 * k))
+		_paint_mesh = _mesh(b) if not b.verts.is_empty() else null
+		_paint_done = all
+	if _paint_mesh != null:
+		draw_mesh(_paint_mesh, null, xf, tint)
+		shown.append(_paint_mesh)

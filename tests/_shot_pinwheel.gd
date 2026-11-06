@@ -77,6 +77,8 @@ func _process(delta: float) -> bool:
 		_puzzle = _host._puzzle
 		if _host.has_node("HowToPlay"):
 			_host.get_node("HowToPlay").free()
+		if _mode.begins_with("theme"):
+			_redeal_themed()
 		_script()
 		return false
 	while not _plan.is_empty() and float(_plan[0][0]) <= _t:
@@ -101,6 +103,37 @@ func _process(delta: float) -> bool:
 		quit()
 		return true
 	return false
+
+## The frame dealt again in the newest cached night's things, as a themed
+## daily deals it (the harness's backend never starts).
+func _redeal_themed() -> void:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var pick := String(files[-1])
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("night="):
+			pick = "pictures-%s-content.json" % a.substr(6)
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + pick))
+	var pics: Array = []
+	var gen = load("res://puzzles/pinwheel_gen.gd")
+	for side in gen.THEMED_SIZES[mini(_level, gen.THEMED_SIZES.size() - 1)]:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			var nm = p.get("name")
+			pics.append({"id": "themed_" + String(p.id), "rows": p.rows,
+				"name": String(nm.get("en", p.id)) if nm is Dictionary else String(p.id)})
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261106 + _level
+	_puzzle._gen += 1
+	_puzzle._close_card()
+	_puzzle._state.setup(rng, _level, pics)
+	_puzzle.max_moves = _puzzle._state.moves_budget()
+	_puzzle._dealt()
+	print("theme: ", pick, " -> ", _puzzle._state.theme.get("name", "(plain)"))
 
 func _cleanup() -> void:
 	for n in root.get_children():
@@ -344,6 +377,34 @@ func _script() -> void:
 						_at(base + s, _shot)
 					_end = base + 3.8))
 			_end = 25.0
+		"theme", "theme_solve":
+			# the newest cached night's thing (night=YYYYMMDD for another): at
+			# rest, solved top-down, the wheels blowing off and the picture
+			# pouring on; theme_solve shoots the solve only
+			if _mode == "theme":
+				_at(1.2, _shot.bind("_rest"))
+			for k in 60:
+				_at(1.5 + 0.32 * k, func() -> void:
+					if _puzzle.is_done():
+						return
+					var p := _next_home()
+					if p >= 0:
+						_tap(p))
+			_at(1.4, func() -> void:
+				_puzzle.solved.connect(func() -> void:
+					var base := _t
+					print("solved, themed %s, win_delay %.2f, subtitle: %s" % [_puzzle._state.themed(),
+						_puzzle.win_delay(), _puzzle.flat_win().subtitle])
+					for s in [0.5, 0.8, 1.2, 2.0]:
+						_at(base + s, _shot)
+					_end = base + 2.4))
+			_end = 25.0
+		"theme_restore":
+			_at(0.2, func() -> void:
+				_puzzle.completed_record = {"hearts": 0, "flawless": false}
+				_puzzle.restore_completed_board())
+			_at(1.0, _shot)
+			_end = 1.5
 		"restore":
 			_at(0.2, func() -> void:
 				_puzzle.completed_record = {"hearts": maxi(0, _puzzle.max_hearts - 1), "flawless": true}

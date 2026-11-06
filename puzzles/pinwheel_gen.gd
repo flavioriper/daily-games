@@ -29,6 +29,10 @@ extends RefCounted
 ## phone. Spec: docs/superpowers/specs/2026-09-20-pinwheel-flat-design.md,
 ## section 5.
 
+const Planes = preload("res://puzzles/planes_state.gd")
+const HHGen = preload("res://puzzles/hedgehogs_gen.gd")
+const QLGen = preload("res://puzzles/quilt_gen.gd")
+
 const DIRS := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
 ## The four bands: the frame, the size multiset the grow partitions it into,
@@ -50,6 +54,8 @@ const BANDS := [
 const ATTEMPTS := 400     ## grows before the loop gives up
 const SCRAMBLES := 220    ## openings tried per proved board, best kept
 const CLOTHS := 8         ## Pal.CLOTH's size, mirrored here so the generator stays scene-free
+## A themed frame's square outside the day's thing, in the grow's grid.
+const VOID := -2
 
 static func band(difficulty: int) -> Dictionary:
 	return BANDS[clampi(difficulty, 0, BANDS.size() - 1)]
@@ -61,23 +67,37 @@ static func band(difficulty: int) -> Dictionary:
 ## satisfy the band is kept as a fallback with a plain scramble over it, so a
 ## seed that somehow exhausts ATTEMPTS still opens a real puzzle rather than
 ## nothing -- Quilt's order of preference, for Quilt's reason.
-static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
+##
+## `shape` (shape_fit's, the daily theme 2026-11-06) grows the frame inside
+## the day's thing instead, its own box and sizes, `attempts` grows at most;
+## a themed deal hands back {} rather than a fallback, so the caller can give
+## the day to the plain frame.
+static func generate(rng: RandomNumberGenerator, difficulty: int, shape: Dictionary = {},
+		attempts := ATTEMPTS) -> Dictionary:
 	var d := clampi(difficulty, 0, BANDS.size() - 1)
 	var b: Dictionary = BANDS[d]
+	var voids: Dictionary = {}
+	if not shape.is_empty():
+		b = b.duplicate()
+		b.cols = int(shape.w)
+		b.rows = int(shape.h)
+		b.sizes = _theme_sizes(rng, b.sizes, int(shape.cells))
+		b.min_turns = int(roundf(float(b.min_turns) * float(shape.cells) / float(_band_cells(d))))
+		voids = shape.voids
 	var cols := int(b.cols)
 	var rows := int(b.rows)
 	var fallback := {}
-	for attempt in range(1, ATTEMPTS + 1):
-		var pieces: Array = _grow(rng, b)
+	for attempt in range(1, attempts + 1):
+		var pieces: Array = _grow(rng, b, voids)
 		if pieces.is_empty():
 			continue
 		var pins := PackedInt32Array()
 		var shapes: Array = []
 		for cells: Array in pieces:
-			var pin: Vector2i = _pin(rng, cells, cols, rows)
+			var pin: Vector2i = _pin(rng, cells, cols, rows, voids)
 			pins.append(pin.y * cols + pin.x)
-			shapes.append(orientations(cells, pin, cols, rows))
-		if count_tilings(shapes, cols, rows, 2) != 1:
+			shapes.append(orientations(cells, pin, cols, rows, voids))
+		if count_tilings(shapes, cols, rows, 2, voids) != 1:
 			continue
 		# Colour before scrambling: it is the cheaper of the two stages and the
 		# likelier rejection. A board eight cloths cannot colour properly is
@@ -103,6 +123,8 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 					_plain_scramble(rng, shapes), attempt)
 			continue
 		return _board(cols, rows, pins, shapes, cloth, scramble, attempt)
+	if not voids.is_empty():
+		return {}
 	if not fallback.is_empty():
 		return fallback
 	# The total-failure dictionary: no frame, no pieces, nothing to look at and
@@ -150,7 +172,7 @@ static func _board(cols: int, rows: int, pins: PackedInt32Array, shapes: Array,
 ## piece wedges into two disconnected holes, and the grow is thrown away.
 ## `quilt_gen.gd` reaches for the same instinct from the same evidence.
 ## Returns `[]` when a piece runs out of frontier or a cell is left over.
-static func _grow(rng: RandomNumberGenerator, b: Dictionary) -> Array:
+static func _grow(rng: RandomNumberGenerator, b: Dictionary, voids: Dictionary = {}) -> Array:
 	var cols := int(b.cols)
 	var rows := int(b.rows)
 	var order: Array = (b.sizes as Array).duplicate()
@@ -158,11 +180,14 @@ static func _grow(rng: RandomNumberGenerator, b: Dictionary) -> Array:
 	var grid: Array = []
 	grid.resize(cols * rows)
 	grid.fill(-1)
+	# A themed frame's voids are taken by nobody's piece before the grow.
+	for c: Vector2i in voids:
+		grid[c.y * cols + c.x] = VOID
 	var pieces: Array = []
 	for idx in order.size():
 		var free: Array = []
 		for i in grid.size():
-			if int(grid[i]) < 0:
+			if int(grid[i]) == -1:
 				free.append(i)
 		if free.is_empty():
 			return []
@@ -191,7 +216,7 @@ static func _grow(rng: RandomNumberGenerator, b: Dictionary) -> Array:
 		cells.sort()
 		pieces.append(cells)
 	for i in grid.size():
-		if int(grid[i]) < 0:
+		if int(grid[i]) == -1:
 			return []
 	var out: Array = []
 	for cells: Array in pieces:
@@ -212,7 +237,7 @@ static func _free_neighbours(grid: Array, cols: int, rows: int, i: int) -> Array
 		if n.x < 0 or n.x >= cols or n.y < 0 or n.y >= rows:
 			continue
 		var j := n.y * cols + n.x
-		if int(grid[j]) < 0:
+		if int(grid[j]) == -1:
 			out.append(j)
 	return out
 
@@ -247,7 +272,12 @@ static func rotate(cells: Array, pin: Vector2i, quarters: int) -> Array:
 ## The order is the mechanic: a tap advances the index by one modulo the
 ## count (the spec's rule 4), so these have to stay in clockwise order and
 ## the solving orientation has to stay first.
-static func orientations(cells: Array, pin: Vector2i, cols: int, rows: int) -> Array:
+##
+## `voids` (a themed frame's, the daily theme 2026-11-06: Vector2i -> true)
+## are squares outside the day's thing: a turn onto one is out of frame and
+## skipped exactly as a turn past the edge is.
+static func orientations(cells: Array, pin: Vector2i, cols: int, rows: int,
+		voids: Dictionary = {}) -> Array:
 	var out: Array = []
 	var seen := {}
 	for k in 4:
@@ -255,7 +285,7 @@ static func orientations(cells: Array, pin: Vector2i, cols: int, rows: int) -> A
 		var ids: Array = []
 		var inside := true
 		for c: Vector2i in turned:
-			if c.x < 0 or c.x >= cols or c.y < 0 or c.y >= rows:
+			if c.x < 0 or c.x >= cols or c.y < 0 or c.y >= rows or voids.has(c):
 				inside = false
 				break
 			ids.append(c.y * cols + c.x)
@@ -272,11 +302,12 @@ static func orientations(cells: Array, pin: Vector2i, cols: int, rows: int) -> A
 ## The pin that leaves the piece the most orientations, chosen at random
 ## among the cells that tie. Maximising is what keeps a piece movable: a pin
 ## chosen carelessly leaves a one-orientation piece and a dead tap.
-static func _pin(rng: RandomNumberGenerator, cells: Array, cols: int, rows: int) -> Vector2i:
+static func _pin(rng: RandomNumberGenerator, cells: Array, cols: int, rows: int,
+		voids: Dictionary = {}) -> Vector2i:
 	var most := -1
 	var best: Array = []
 	for pin: Vector2i in cells:
-		var n: int = orientations(cells, pin, cols, rows).size()
+		var n: int = orientations(cells, pin, cols, rows, voids).size()
 		if n > most:
 			most = n
 			best = [pin]
@@ -294,7 +325,8 @@ static func _pin(rng: RandomNumberGenerator, cells: Array, cols: int, rows: int)
 ## This is the whole uniqueness proof, and it is cheap here because a pinned
 ## piece cannot translate: it has at most four placements in the entire
 ## frame, where a Quilt patch has one per position it fits.
-static func count_tilings(shapes: Array, cols: int, rows: int, cap: int) -> int:
+static func count_tilings(shapes: Array, cols: int, rows: int, cap: int,
+		voids: Dictionary = {}) -> int:
 	var total := cols * rows
 	var ids: Array = []
 	var by_cell: Array = []
@@ -314,10 +346,13 @@ static func count_tilings(shapes: Array, cols: int, rows: int, cap: int) -> int:
 	var cover: Array = []
 	cover.resize(total)
 	cover.fill(0)
+	# A void is covered from the start: nothing may lie on it, nothing must.
+	for c: Vector2i in voids:
+		cover[c.y * cols + c.x] = 1
 	var used: Array = []
 	used.resize(shapes.size())
 	used.fill(false)
-	return _count(ids, by_cell, cover, used, 0, total, cap)
+	return _count(ids, by_cell, cover, used, voids.size(), total, cap)
 
 static func _count(ids: Array, by_cell: Array, cover: Array, used: Array,
 		filled: int, total: int, cap: int) -> int:
@@ -709,3 +744,99 @@ static func _colour(shapes: Array, strict := true) -> PackedInt32Array:
 			pick = p % CLOTHS
 		cloth[p] = pick
 	return cloth
+
+# --------------------------------------------------------- the daily theme
+
+## The night's things each band's frame may be cut to (the daily theme,
+## 2026-11-06), tried in order: Easy the 10 then the 12, Medium the 12 then
+## the 10, Hard the 12 then the 24. Insane is Ribbons and is never cut.
+const THEMED_SIZES := [[10, 12], [12, 10], [12, 24]]
+## The square box a band's cut is laid in: a square or two wider than the
+## band's frame, since the squares outside the thing are lost.
+const THEME_BOXES := [6, 7, 8]
+## A cut keeps at least SHAPE_MIN of the band's own squares (a smaller frame
+## is a shorter day) and at most SHAPE_MAX of its bounding box (or it is the
+## rectangle with a corner off).
+const SHAPE_MIN := 0.8
+const SHAPE_MAX := 0.9
+## Grows a cut tries before it gives the day back to the plain frame.
+const THEME_ATTEMPTS := 160
+
+static func _band_cells(d: int) -> int:
+	return int(BANDS[d].cols) * int(BANDS[d].rows)
+
+## `pic_rows` (a night picture's rows) cut for band `d`: {w, h, voids
+## (Vector2i -> true), beads (Vector2i -> bead name), cells}, or {} when the
+## box keeps none of the rules.
+static func shape_fit(pic_rows: Array, d: int) -> Dictionary:
+	var bi := clampi(d, 0, THEME_BOXES.size() - 1)
+	var m: int = THEME_BOXES[bi]
+	var box := Vector2i(m, m)
+	var cut := Planes.cut_shape(pic_rows, box, false)
+	if cut.is_empty():
+		return {}
+	var off := Vector2i((m - int(cut.cols)) / 2, (m - int(cut.rows)) / 2)
+	var on := {}
+	for c: Vector2i in cut.cells:
+		on[c + off] = cut.cells[c]
+	on = HHGen._smooth(on, box)
+	if on.is_empty():
+		return {}
+	QLGen._fill_holes(on, m)
+	var lo := Vector2i(m, m)
+	var hi := Vector2i(-1, -1)
+	for c: Vector2i in on:
+		lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
+		hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
+	var ext := hi - lo + Vector2i.ONE
+	var count := on.size()
+	if float(count) < SHAPE_MIN * float(_band_cells(bi)) or float(count) > SHAPE_MAX * float(ext.x * ext.y):
+		return {}
+	var voids := {}
+	var beads := {}
+	for y in ext.y:
+		for x in ext.x:
+			var q := Vector2i(x, y)
+			if on.has(q + lo):
+				beads[q] = on[q + lo]
+			else:
+				voids[q] = true
+	return {"w": ext.x, "h": ext.y, "voids": voids, "beads": beads, "cells": count}
+
+## The band's piece sizes brought to sum to `cells`, the thing's squares:
+## pieces of three or four are dropped or added, and the nearest piece
+## grown or shrunk by one for what is left, so the mix stays the band's.
+static func _theme_sizes(rng: RandomNumberGenerator, sizes: Array, cells: int) -> Array:
+	var out: Array = sizes.duplicate()
+	var total := 0
+	for v: int in out:
+		total += v
+	var guard := 0
+	while total != cells and guard < 64:
+		guard += 1
+		var diff := cells - total
+		if diff >= 3:
+			var add := 3 if diff == 3 or rng.randf() < 0.5 else 4
+			out.append(add)
+			total += add
+		elif diff <= -3:
+			var at := out.find(3) if out.has(3) else out.find(4)
+			if at < 0:
+				break
+			total -= int(out[at])
+			out.remove_at(at)
+		else:
+			# One or two off: nudge pieces one square at a time, never under
+			# two or over five.
+			var step := signi(diff)
+			var picks: Array = []
+			for i in out.size():
+				var v := int(out[i]) + step
+				if v >= 2 and v <= 5:
+					picks.append(i)
+			if picks.is_empty():
+				break
+			var i: int = picks[rng.randi_range(0, picks.size() - 1)]
+			out[i] = int(out[i]) + step
+			total += step
+	return out
