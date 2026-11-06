@@ -357,6 +357,11 @@ func _script() -> void:
 			_at(t1 + 4.5, func() -> void:
 				_puzzle.completed_record = _puzzle.completion_record()
 				_puzzle.restore_completed_board())
+			_at(t1 + 4.6, func() -> void:
+				var lv: Array = []
+				for p in st.shapes.size():
+					lv.append(_puzzle._paint_level(p, _puzzle._now()))
+				print("reopen paint levels: ", lv))
 			_at(t1 + 5.0, _shot.bind("_reopen"))
 			_end = t1 + 5.1
 		"restore":

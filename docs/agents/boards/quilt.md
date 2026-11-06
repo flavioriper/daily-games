@@ -400,8 +400,16 @@ the list", autonomous. Quilt was next after Hosepipes.
 - `tests/_shot_quilt.gd theme` re-deals in the newest cached night (the
   harness's backend never starts), solves and reopens. `opengl3_angle`,
   810x1440, second reading: themed Medium and Easy peak **155** draw calls
-  (plain solve 110 the same session); `_win.gd -- quilt` PASS.
+  (plain solve 110 the same session); `_win.gd -- quilt` PASS. A reopened
+  themed day prints every brick's paint at 1.0. **Plain deals unchanged**:
+  100 `Gen.generate` deals (25 seeds x four bands) hash and read the same
+  before and after this change.
+- `_on_solved` forgets the looks on a themed day: a painted look bakes the
+  beads where its patch lies, and a Redo may sew two alike patches the
+  other way round.
 - Decided for the user, unconfirmed: Hard left plain; themed Medium reads
   easier than a node-graded one could; the cat moved off the quilt; `boing`
-  onto the bank token. Owed: a phone, the ear, pt/es native read of
+  onto the bank token. Owed: a phone, the ear (on a themed win `theme`,
+  `dance` and `party` start within ~0.65 s of each other, over `solved`;
+  Hosepipes kept its theme cue clear of its party), pt/es native read of
   QL_WIN_THEME.

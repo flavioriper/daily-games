@@ -3085,6 +3085,9 @@ func _on_solved() -> void:
 	fx.cue("solved")
 	# A themed quilt's picture comes in on the bricks once the wave has run.
 	if _state.themed():
+		# a painted look bakes the beads of where its patch lies, and a Redo
+		# may sew two alike patches the other way round
+		_forget_looks()
 		_paint_at = _solved_at
 		_busy_for(_paint_from() + _paint_span())
 		_after(0.0 if Motion.reduce else _paint_from(), fx.cue.bind("theme"))
