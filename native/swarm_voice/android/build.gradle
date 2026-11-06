@@ -1,0 +1,21 @@
+// The Swarm's call audio for Android (docs/agents/bot.md, "Echo cancelling"):
+// tools/build_swarm_voice.sh builds both AARs into addons/swarm_voice/android/.
+plugins { id 'com.android.library' }
+
+android {
+    namespace 'com.peeplet.swarmvoice'
+    compileSdk 36
+    defaultConfig {
+        minSdk 24
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // the engine the game exports with (android/build is unpacked from 4.7's template)
+    compileOnly files('../../../android/build/libs/release/godot-lib.template_release.aar')
+}

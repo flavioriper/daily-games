@@ -18,9 +18,15 @@ extends Node
 ## Nothing here asks for the mic permission or reads `Backend`: the screen
 ## does both and hands `start` the token ("" means offline, nothing dialled).
 
-## The screen gates the mic with send_silence: zeros go up in the mic's place
-## while the Swarm talks (half duplex: no echo cancelling here), so the frames
-## keep their pace and the server hears silence, never a gap.
+## On a phone with the SwarmVoice plugin (Android, native/swarm_voice) both
+## directions go through the phone's voice-call path instead of Godot's audio:
+## the mic records with the phone's echo canceller and the Swarm's voice plays
+## where that canceller hears it, so the mic stays open while the Swarm talks
+## (full duplex, `full_duplex()`), as in the browser. Without the plugin (desktop,
+## iOS until its plugin, a phone where it failed to start) Godot's raw mic is
+## used and the screen gates it with send_silence: zeros go up in the mic's
+## place while the Swarm talks (half duplex), so the frames keep their pace and
+## the server hears silence, never a gap. docs/agents/bot.md, "Echo cancelling".
 ## Where the call server lives. In a debug build only, overridden by the BOT_URL
 ## environment variable, then by the first line of user://bot_url (a phone
 ## pointed at a Mac's server). The Cloud Run service `peeplet-bot` in
@@ -64,6 +70,12 @@ class Hub:
 
 static var _hub := Hub.new()
 static var _call: BotCall
+static var _native: Object = null
+
+## Debug builds only: the mic stays open while the Swarm talks even on Godot's
+## raw mic, for a call with earbuds (no echo to cancel). `BOT_FULL_DUPLEX=1` or
+## the file user://bot_full_duplex.
+const DUPLEX_FILE := "user://bot_full_duplex"
 
 # --- the poller's own state ---
 var _peer := WebSocketPeer.new()
@@ -78,6 +90,8 @@ var _bye_at := 0
 var _stop_at := 0
 var _done := false
 var _silence := false
+var _nat := false  # this call's audio goes through the SwarmVoice plugin
+var _nat_aec := false  # and the phone's echo canceller is on its mic
 # up
 var _mic: AudioStreamPlayer
 var _cap: AudioEffectCapture
@@ -207,6 +221,29 @@ static func seen(id: String, jpg: PackedByteArray, w: int, h: int) -> void:
 		_call._send({"type": "seen", "id": id, "jpg": Marshalls.raw_to_base64(jpg), "w": w, "h": h})
 
 
+## The SwarmVoice plugin (native/swarm_voice), or null where it is not built in.
+static func native() -> Object:
+	if _native == null and Engine.has_singleton("SwarmVoice"):
+		_native = Engine.get_singleton("SwarmVoice")
+	return _native
+
+
+## The mic may stay open while the Swarm talks: its voice and the mic are on the
+## phone's call path with the echo canceller on (or a debug build said so, for a
+## call with earbuds). Off, the screen sends silence while the Swarm talks.
+static func full_duplex() -> bool:
+	if _call != null and _call._nat and _call._nat_aec:
+		return true
+	if OS.is_debug_build():
+		return OS.get_environment("BOT_FULL_DUPLEX") == "1" or FileAccess.file_exists(DUPLEX_FILE)
+	return false
+
+
+## This call's audio goes through the plugin (a probe reads it).
+static func native_audio() -> bool:
+	return _call != null and _call._nat
+
+
 static func send_silence(on: bool) -> void:
 	if _call != null:
 		if _call._silence and not on:
@@ -236,6 +273,9 @@ static func playing() -> bool:
 	var c := _call
 	if not c._down.is_empty():
 		return true
+	if c._nat:
+		var nv := native()
+		return int(nv.queued()) - int(nv.played()) > 64
 	return c._pb != null and c._pb.get_frames_available() < c._room - 64
 
 
@@ -246,6 +286,8 @@ static func consumed() -> int:
 	if _call == null:
 		return 0
 	var c := _call
+	if c._nat:
+		return int(native().played())
 	var waiting := 0
 	if c._pb != null:
 		waiting = maxi(0, c._room - c._pb.get_frames_available())
@@ -254,6 +296,10 @@ static func consumed() -> int:
 
 ## How loud the Swarm bus is right now, 0..1 (as the Swarm tab's face reads it).
 static func level() -> float:
+	if _call != null and _call._nat:
+		# the RMS of what the speaker plays now, on the same 0..1 the analyser gives
+		var rms := float(native().level())
+		return clampf((linear_to_db(maxf(rms, 0.00001)) + 46.0) / 30.0, 0.0, 1.0)
 	var sp := spectrum()
 	if sp == null:
 		return 0.0
@@ -339,6 +385,7 @@ func _on_text(raw: String) -> void:
 			_live = true
 			_live_at = Time.get_ticks_msec()
 			_heard_at = _live_at
+			_open_native()
 			_open_voice()
 			_open_mic()
 		"clear":
@@ -384,6 +431,25 @@ func _exit_tree() -> void:
 		_finish("dropped")
 
 
+# --- the phone's call path (the SwarmVoice plugin) ---
+
+## Both directions through the plugin when it is there and starts; never with
+## the test tone (a probe drives Godot's path).
+func _open_native() -> void:
+	_nat = false
+	_nat_aec = false
+	if test_tone_hz > 0.0:
+		return
+	var nv := native()
+	if nv == null:
+		return
+	if bool(nv.start()):
+		_nat = true
+		_nat_aec = bool(nv.echoCancelling())
+	else:
+		push_warning("BotCall: SwarmVoice did not start; Godot's mic, half duplex")
+
+
 # --- up: the mic, averaged down to 16 kHz, 20 ms a frame ---
 
 func _open_mic() -> void:
@@ -391,7 +457,7 @@ func _open_mic() -> void:
 	_src = PackedFloat32Array()
 	_pos = 0.0
 	_up = PackedByteArray()
-	if test_tone_hz > 0.0:
+	if test_tone_hz > 0.0 or _nat:
 		return
 	var at := AudioServer.get_bus_index(MIC_BUS)
 	if at < 0:
@@ -414,6 +480,9 @@ func _open_mic() -> void:
 
 
 func _release_mic() -> void:
+	if _nat:
+		_nat = false  # the plugin stops both ways: after a bye nothing more is played
+		native().stop()
 	if _mic != null:
 		_mic.stop()
 		_mic.queue_free()
@@ -424,6 +493,19 @@ func _release_mic() -> void:
 
 
 func _pump_up(dt: float) -> void:
+	if _nat:
+		# already 16 kHz int16 mono, echo cancelled by the phone
+		var got: PackedByteArray = native().readMic()
+		if got.is_empty():
+			return
+		if got.count(0) < got.size():
+			_heard_at = Time.get_ticks_msec()
+			_mic_alive = true
+		_up.append_array(got)
+		while _up.size() >= FRAME * 2:
+			_send_frame(_up.slice(0, FRAME * 2))
+			_up = _up.slice(FRAME * 2)
+		return
 	var st: PackedVector2Array
 	if test_tone_hz > 0.0:
 		# a tone at the mix rate, as the capture would give it, by the clock
@@ -483,6 +565,8 @@ func _send_frame(f: PackedByteArray) -> void:
 # --- down: the Swarm's voice, 24 kHz into a short generator ---
 
 func _open_voice() -> void:
+	if _nat:
+		return
 	ensure_bus()
 	var gen := AudioStreamGenerator.new()
 	gen.mix_rate = DOWN_RATE
@@ -501,11 +585,20 @@ func _open_voice() -> void:
 ## empty playback (a playing generator refuses clear_buffer).
 func _clear_voice() -> void:
 	_down = PackedByteArray()
+	if _nat:
+		native().clearVoice()
+		return
 	if _pb != null and _fade_left < 0.0:
 		_fade_left = FADE
 
 
 func _feed_voice(dt: float) -> void:
+	if _nat:
+		if not _down.is_empty():
+			native().pushVoice(_down)
+			samples_pushed += _down.size() / 2
+			_down = PackedByteArray()
+		return
 	if _pb == null:
 		return
 	if _fade_left >= 0.0:

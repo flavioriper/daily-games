@@ -21,11 +21,14 @@ extends Control
 ##
 ## Hands free, like a call (the user, 2026-11-05 evening: "replace the mic
 ## button with a hands free like a call"; the hold-to-talk button of that
-## afternoon is gone). Half duplex: the mic is open whenever the Swarm is not
-## talking; while the server says `speaking` or its voice still plays,
-## silence goes up in the mic's place (BotCall.send_silence), at the same
-## pace, so the phone's speaker never feeds the Swarm its own words (Godot's
-## mic has no echo cancelling). A tap on the face while it talks cuts it and
+## afternoon is gone). Full duplex on a phone whose call audio runs through
+## the SwarmVoice plugin with the echo canceller on (`BotCall.full_duplex`):
+## the mic never closes, so a pause and more words, or talking over the Swarm,
+## reach the server as in the browser (2026-11-05 night). Elsewhere half
+## duplex: the mic is open whenever the Swarm is not talking; while the
+## server says `speaking` or its voice still plays, silence goes up in the
+## mic's place (BotCall.send_silence), at the same pace, so the speaker never
+## feeds the Swarm its own words (Godot's mic has no echo cancelling). A tap on the face while it talks cuts it and
 ## opens the mic at once. The face's speaking look holds until the voice has
 ## drained, not until the server's next state, and a drawing being judged
 ## (`draw`, then `see`) keeps a thinking look.
@@ -423,7 +426,9 @@ func _process(_delta: float) -> void:
 func _drive() -> void:
 	var playing := BotCall.playing()
 	var speaking := _server_state == "speaking"
-	BotCall.send_silence((speaking or playing) and not _opened)
+	# On the phone's call path with its echo canceller the mic stays open while the
+	# Swarm talks: talking over it cuts it off (the server's barge-in), as in the browser.
+	BotCall.send_silence((speaking or playing) and not _opened and not BotCall.full_duplex())
 	if BotCall.mic_dead():
 		_mic_refused()
 		return

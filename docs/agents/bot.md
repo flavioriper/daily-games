@@ -104,6 +104,65 @@ never given a non-zero sample in the call (`_mic_alive`): a refused mic
 never does, a phone gating a quiet room to zeros did once. Draw calls on the
 live room with three lines of subtitles: 27 (39 with the button).
 
+## Echo cancelling: why the phone call felt worse than persona-studio (2026-11-05 night)
+
+The user: "Bot here can't properly understand pauses, i talk and he answer 3
+phrases later ... it doesn't sound smooth or human like the persona studio
+one". **The server is not why**: `server/bot/voice/bot.py` builds the same
+pipeline as persona-studio's (Flux, Listener, steer, LLM, ElevenLabs, clips;
+same `COMMIT_EOT`, `strategies()`), and `seeds/swarm.json` differs from
+`flavio.json` only in persona and lines. **The phone's audio was**: the
+browser opens its mic with `echoCancellation`, `noiseSuppression` and
+`autoGainControl` (persona-studio `static/call.js`), so the call is full
+duplex: a pause and more words, or talking over the voice, reach Flux and the
+pipeline's barge-in merges them. Godot's mic is raw (iOS `RemoteIO`, not the
+voice-processing unit; Android OpenSL with no voice preset), so the screen had
+to send zeros whenever the Swarm talked, and everything said over it was
+lost: the Swarm answered the first half of a thought while the rest never
+arrived. Godot 4.7's `AudioStreamPlaybackMicrophone` also reads its small ring
+with no check against the write pointer (read in the source, not measured on
+a phone).
+
+**The fix is the phone's call path, both ways**: echo cancelling only works
+when the canceller sees what the speaker plays, so the Swarm's voice plays
+through the same path as the mic. `native/swarm_voice/` is the plugin,
+`tools/build_swarm_voice.sh` builds it into `addons/swarm_voice/` (the AARs
+are committed, as Firebase's; `android/` is not in git), and
+`addons/swarm_voice/export_plugin.gd` puts it in Android exports.
+
+- **Android** (`SwarmVoicePlugin.java`, the WebRTC recipe): `MODE_IN_COMMUNICATION`,
+  `AudioRecord` from `VOICE_COMMUNICATION` at 16 kHz with
+  `AcousticEchoCanceler`, `NoiseSuppressor` and `AutomaticGainControl` on its
+  session when the phone has them, the voice on a `USAGE_VOICE_COMMUNICATION`
+  `AudioTrack` at 24 kHz; the route is a headset when one is there, else the
+  loudspeaker (the call path's default is the earpiece);
+  `MODIFY_AUDIO_SETTINGS` comes in the AAR's manifest. Mode and route are put
+  back at the call's end. The game polls it each frame (`readMic`,
+  `pushVoice`, `clearVoice`, `played`, `queued`, `level`); logcat tag
+  `SwarmVoice` prints `started: aec=… ns=… agc=…`.
+- **`bot/call.gd`** uses it when `Engine.has_singleton("SwarmVoice")` and
+  `start()` succeeds; otherwise (desktop, iOS for now, a failed start, the
+  probe's test tone) Godot's mic and generator as before. `consumed()`,
+  `playing()` and `level()` read the plugin then, so the subtitles and the
+  face keep pace with the speaker.
+- **The gate is conditional**: `bot_screen.gd` sends silence while the Swarm
+  talks only when `BotCall.full_duplex()` is false, which is true on the
+  plugin with the echo canceller on. A debug build can force it for a call
+  with earbuds: `BOT_FULL_DUPLEX=1` or the file `user://bot_full_duplex`.
+- **Music** is already held for the whole call (`Music.hold("bot")`): on iOS
+  the canceller only removes what plays through its own unit, so nothing of
+  the game's may play during a call.
+- **iOS** is owed: `AVAudioEngine` with `setVoiceProcessingEnabled(true)`
+  (set while stopped; one I/O node turns on both), session `.playAndRecord`
+  / `.voiceChat` / `.defaultToSpeaker`, the mic tap converted to 16 kHz
+  int16, the voice from an `AVAudioSourceNode` reading a ring (that is the
+  canceller's reference), a `.gdip` with debug and release xcframeworks built
+  against `~/dev/godot-4.7-src`'s headers. `.voiceChat` alone over Godot's
+  `RemoteIO` does not cancel anything.
+- **Owed on the phone**: speaker on, talk over the Swarm mid-sentence (it
+  stops, `clear` comes), pause mid-thought and go on (one turn, not two);
+  check logcat says `aec=true` on the ROG.
+
 ## Testing a call locally
 
 `BOT_TEST_PAGE=1 uv run python server.py` serves `GET /test`
