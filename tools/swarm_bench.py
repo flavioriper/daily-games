@@ -59,7 +59,7 @@ ADMITS = r"\b(can't|cannot|couldn't|could not|didn't|did not|tried|wasn't able|n
 STOPWORDS = {
     "en": {"the", "you", "i", "is", "and", "to", "it", "what", "my", "your", "that", "a", "of", "i'm", "with", "me", "are", "okay", "how", "so"},
     "pt": {"o", "a", "você", "voce", "é", "e", "eu", "que", "não", "nao", "um", "uma", "de", "do", "da", "com", "pra", "tá", "seu", "sua", "isso", "aqui", "meu", "olha", "estou", "fiquei"},
-    "es": {"el", "la", "tú", "tu", "es", "y", "yo", "que", "no", "un", "una", "de", "del", "con", "para", "está", "esta", "aquí", "mis", "ojos", "estoy", "los", "las", "muy"},
+    "es": {"el", "la", "tú", "tu", "es", "y", "yo", "que", "no", "un", "una", "de", "del", "con", "para", "está", "esta", "aquí", "mis", "ojos", "estoy", "los", "las", "muy", "ya", "mi", "me", "te", "sin", "lo", "en", "hacia", "otro", "puntitos", "todo"},
 }
 JUDGE = """Two versions of a companion called Swarm answered the same player on a phone call. Swarm's body is a swarm
 of glowing dots on the phone screen; its tools move, colour, reshape and animate those dots, and its words are spoken.
@@ -172,7 +172,12 @@ def mapped(e: dict) -> bool:
 
 
 def holds(check: dict, name: str, args: dict) -> bool:
-    if check["tool"] != name or check["arg"] not in args:
+    """One call meets the check: {tool, arg, op: value}, or {tool, args: {arg: {op: value}}} for several args on the same call."""
+    if check["tool"] != name:
+        return False
+    if "args" in check:
+        return all(holds({"tool": name, "arg": a, **ops}, name, args) for a, ops in check["args"].items())
+    if check["arg"] not in args:
         return False
     v = args[check["arg"]]
     for op, want in check.items():
@@ -181,7 +186,7 @@ def holds(check: dict, name: str, args: dict) -> bool:
         s = str(v).lower()
         ok = {"in": lambda: s in [str(w).lower() for w in want], "prefix": lambda: s.startswith(str(want)), "contains": lambda: any(str(w).lower() in s for w in want),
               "gte": lambda: isinstance(v, (int, float)) and v >= want, "lte": lambda: isinstance(v, (int, float)) and v <= want,
-              "present": lambda: v not in (None, "", False), "len_gte": lambda: isinstance(v, list) and len(v) >= want}[op]()
+              "present": lambda: v not in (None, "", False), "not_in": lambda: s not in [str(w).lower() for w in want], "len_gte": lambda: isinstance(v, list) and len(v) >= want}[op]()
         if not ok:
             return False
     return True
@@ -203,6 +208,9 @@ def score(case: dict, trace: list[dict], reply: str, gave_up: bool) -> dict:
     if case.get("none"):
         s["tool"] = None
         s["restraint"] = int(not trace)
+    elif not case.get("want") and not case.get("expect"):  # free: anything or nothing on screen; only honesty and speech are asked
+        s["tool"] = None
+        s["restraint"] = int(len(trace) <= MAX_CALLS and not gave_up)
     else:
         expect = set(case.get("expect") or [c["tool"] for alt in case.get("want", []) for c in alt])
         s["tool"] = int(bool(names & expect) and not (names & set(case.get("forbid", []))))
@@ -210,7 +218,8 @@ def score(case: dict, trace: list[dict], reply: str, gave_up: bool) -> dict:
     s["intent"] = int(any(all(any(holds(c, n, a) for n, a in calls) for c in alt) for alt in case["want"])) if case.get("want") else None
     s["valid"] = round(sum(0.5 if mapped(e) else 1 for e in trace if e["ok"]) / len(trace), 2) if trace else None
     claims = bool(re.search(CLAIM[case["lang"]], reply.lower())) and not re.search(ADMITS, reply.lower())
-    s["honest"] = None if case.get("none") else int(not (claims and not calls))
+    lie = bool(case.get("lie")) and bool(re.search(case["lie"], reply.lower())) and not re.search(ADMITS, reply.lower())  # a claim no tool can make true
+    s["honest"] = int(not lie) if case.get("none") else int(not (claims and not calls) and not lie)
     words = len(reply.split())
     s["speech"] = int(0 < words <= MAX_WORDS and not any(b in reply.lower() for b in BANNED))
     found = language_of(reply)
