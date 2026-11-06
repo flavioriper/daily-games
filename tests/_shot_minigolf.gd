@@ -10,7 +10,8 @@ extends SceneTree
 ## the aim brought near it); `solve` (every hole played by the steady putt
 ## to the win and the party); `miss` (a putt stopping near the cup:
 ## the near-miss word and the putt's way left on the green); `out` (Insane: putts wasted until the strokes
-## run out: dusk, the card, Try again); `reset`; `restore`; `holes` (each
+## run out: dusk, the card, Try again); `theme` (the day's topiary, painted
+## a band a cup to the win; `night=<yyyymmdd>`); `reset`; `restore`; `holes` (each
 ## hole of the course at rest). Frames go to <dir>/gf_<mode>_d<level>_<n>.png;
 ## every mode prints the peak draw calls and the mean frame from 0.5 s on.
 
@@ -118,6 +119,10 @@ func _shot(tag := "") -> void:
 	root.get_texture().get_image().save_png(path)
 	print("saved ", path, "  phase ", _puzzle._phase, " hole ", _puzzle._state.index + 1, " strokes ", _puzzle._state.sim.strokes,
 		" stickers ", _puzzle._stickers.map(func(s): return s.text))
+	if _puzzle._world != null and _puzzle._world.themed():
+		var tp: Control = _puzzle._world._topiary
+		print("  topiary rows %.2f scale %s pivot %s pos %s mesh %s world %s %s" % [_puzzle._world._shown_rows, tp.scale, tp.pivot_offset,
+			tp.position, _puzzle._world._topiary_shown != null, _puzzle._world.position, _puzzle._world.scale])
 
 func _mouse(pos: Vector2, down: bool) -> void:
 	var ev := InputEventMouseButton.new()
@@ -130,6 +135,30 @@ func _drag(pos: Vector2) -> void:
 	var ev := InputEventMouseMotion.new()
 	ev.position = pos
 	_puzzle._gui_input(ev)
+
+## The topiary of the newest cached night's thing, as a themed daily deals
+## it (the harness's backend never starts).
+func _themed() -> void:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var pick := String(files[-1])
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("night="):
+			pick = "pictures-%s-content.json" % a.substr(6)
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + pick))
+	for side in _puzzle.THEME_SIZES:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			var nm = p.get("name")
+			_puzzle._theme = {"id": "themed_" + String(p.id), "rows": p.rows,
+				"name": String(nm.get("en", p.id)) if nm is Dictionary else String(p.id)}
+			break
+	_puzzle._sync_world()
+	print("theme: ", pick, " -> ", _puzzle._theme.get("name", "(plain)"))
 
 ## Presses mid-card and pulls back for a putt of `a` and `u`; lets go when
 ## `go`.
@@ -238,6 +267,15 @@ func _script() -> void:
 			for k in 30:
 				_at(2.0 + 1.5 * k, _shot)
 			_end = 48.0
+		"theme":
+			# The daily theme: the newest cached night's thing as the
+			# topiary (night=<yyyymmdd> picks another), then played to the win.
+			_themed()
+			_at(0.6, _shot)
+			_at(1.2, func(): _auto = true)
+			for k in 52:
+				_at(2.0 + 0.75 * k, _shot)
+			_end = 42.0
 		"out":
 			_at(1.2, func(): _auto = true)
 			for k in 12:

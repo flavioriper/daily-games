@@ -2145,7 +2145,14 @@ SETS = {
         # back at 376 Hz, so the phrases' steps are 2 to 11 up and every note
         # lands between 400 and 700 Hz; no two cues share a contour. wall's
         # tock starts at 20 ms, the others at 0.
-        "putt":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1600", "cut:0.14", "body:320", "tight"),
+        # putt, lip, sink, gate and reset moved to the bank 2026-11-06 (the
+        # house sound, with the daily theme's topiary): the stroke under the
+        # finger is the token, the rim-out a miss (the tongue, three notches
+        # there and back), the cup a drop set down on a water board (the
+        # plop, two notches four steps apart), the gates swapping on every
+        # other putt a thing repeated (the wrap) and the card blank again a
+        # thing taken off (the lip, five falling).
+        "putt":          ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -13, FOLEY, "bank:token", "cut:0.14", "tight"),
         # The kerb, pitched and levelled by how hard the ball met it. A post
         # is the same take one notch three steps up (the board adds a step a
         # post).
@@ -2159,8 +2166,8 @@ SETS = {
         # back. In the cup: putt's take, two notches with the second four
         # steps up; the card's word follows 0.32 s behind, so it is not a
         # phrase.
-        "lip":           ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.24", "body:320", "tight", "notes:0.06:0,2,0"),
-        "sink":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -13, HUSH, "warm:1500", "cut:0.24", "body:320", "tight", "notes:0.1:-4,0"),
+        "lip":           ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.24", "notes:0.06:0,2,0", "tight"),
+        "sink":          ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -13, FOLEY, "bank:plop", "cut:0.24", "notes:0.1:-4,0", "tight"),
         # The card's words: the better the hole, the longer and the higher
         # the rise. A hole in one is two climbs of three, a birdie three up,
         # par two notes a third apart all but together, a bogey two with the
@@ -2172,12 +2179,12 @@ SETS = {
         # The next hole sliding in: a longer breath, Hedgehogs' whoosh. The
         # gates swapping: putt's take, two low notches all but together.
         "next":          ("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -16, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320"),
-        "gate":          ("one small hollow wooden block set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1400", "cut:0.2", "body:320", "tight", "notes:0.03:-5,-2"),
+        "gate":          ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.2", "notes:0.05:-5,-2", "tight"),
         # The bulb: two notes alike and a third up.
         "hint":          ("one soft short note on a kalimba, muffled and kind", 0.6, -10, COZY_TUNE, "warm:2400", "ease:0.012", "body:300", "notes:0.16:3,3,7", "cut:1.0"),
         # The card blank again: wall's take, five notches falling. The course
         # set out: five in a row.
-        "reset":         ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.5", "body:320", "tight", "notes:0.08:5,3,1,0,-2"),
+        "reset":         ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -16, FOLEY, "bank:lip", "cut:0.5", "notes:0.08:5,3,1,0,-2", "tight"),
         "enter":         ('one water drop falling into a cup of water, a single soft plop, close, very short', 0.5, -14, FOLEY, "bank:plop", "cut:0.5", "notes:0.08:1,4,1,3,6", "tight"),
         # The strokes run out (Insane), and the three handed back.
         "out_of_hearts": ("one soft short note on a kalimba, muffled and kind", 0.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,7,3"),
@@ -2188,6 +2195,9 @@ SETS = {
         "party":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.14:2,5,9,5,9,11", "cut:1.9"),
         "stamp":         ("one soft short note on a kalimba, muffled and kind", 0.6, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:7,3,10"),
         "purr":          ("one short soft contented chirrup, a little rolling trill with the mouth closed, gentle and happy", 1.0, -12, KITTEN, "warm:2400", "ease:0.01", "body:300"),
+        # A themed day's last cup (the daily theme, 2026-11-06): the
+        # topiary's last band takes its beads; the boards' theme cue.
+        "theme":         ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
     },
     # Horse Pen (puzzles/horse2d.gd): hay bales dropped on a meadow to pen a
     # pony in. `place` fires on every move and `lift` and `undo` nearly as

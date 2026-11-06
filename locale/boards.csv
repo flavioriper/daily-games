@@ -1939,6 +1939,7 @@ GF_LINE_ONE,Hole %d · Par %d · 1 stroke,Buraco %d · Par %d · 1 tacada,Hoyo %
 GF_LINE_N,Hole %d · Par %d · %d strokes,Buraco %d · Par %d · %d tacadas,Hoyo %d · Par %d · %d golpes
 GF_HINT,The bulb found a steady line. Pull back until your dots turn gold.,A lâmpada achou uma linha segura. Puxe até os seus pontinhos ficarem dourados.,La bombilla encontró una línea segura. Tira hasta que tus puntitos se pongan dorados.
 GF_RESET,Back to the first tee. A fresh card.,De volta à primeira saída. Cartão novo.,De vuelta a la primera salida. Tarjeta nueva.
+GF_WIN_THEME,"Today's topiary: %s · %s","Topiaria de hoje: %s · %s","Topiaria de hoy: %s · %s"
 GF_WIN_EVEN,%d strokes: right on par.,%d tacadas: bem no par.,%d golpes: justo en el par.
 GF_WIN_UNDER,%d strokes: %d under par!,%d tacadas: %d abaixo do par!,%d golpes: ¡%d bajo par!
 GF_WIN_OVER,%d strokes: %d over par.,%d tacadas: %d acima do par.,%d golpes: %d sobre par.

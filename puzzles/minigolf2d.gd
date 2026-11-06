@@ -48,6 +48,21 @@ const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 const World = preload("res://puzzles/minigolf_world.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
+
+## The daily theme (2026-11-06): on a daily whose night pictures this phone
+## holds, the windmill at the foot gives its place to the day's thing
+## clipped as a topiary (puzzles/minigolf_world.gd), the 12 first, then the
+## 10, on every band: it is the course's centrepiece and changes no hole.
+## Each cup sunk paints the next band of it in its beads from the bottom up,
+## and the last cup finishes it with the theme cue. The holes, the sim and
+## the bank are untouched: a course is mined and proved on the Mac, and no
+## green on a 4 by 6 grid could hold the thing's outline.
+const THEME_SIZES := [12, 10]
+## A themed day's win screen waits (win_lead) for the last band to paint
+## and this long more, so the finished thing is seen before the card covers
+## the foot.
+const THEME_SEE := 0.6
 const FLAT_HOST_PATH := "res://ui/flat/flat_host.gd"
 ## The lawn kept open under the field on a bleed board, for the world's
 ## foot, and the slide into the win's span (the host's SLOT_TIME).
@@ -181,6 +196,7 @@ const HAPTICS := {
 	"reset": Haptics.TAP,
 	"heart_back": Haptics.GOOD,
 	"out_of_hearts": Haptics.LOSE,
+	"theme": Haptics.GOOD,
 }
 
 var _state = State.new()
@@ -268,6 +284,8 @@ var _anim_until := 0.0
 ## The world behind the board, and what the host's rows cover (set_clear).
 var _bled := false
 var _world: Control
+## The day's thing on a themed day ({id, name, rows}), else {}.
+var _theme: Dictionary = {}
 var _clear := Vector2.ZERO
 var _win_clear := Vector2.ZERO
 var _win_span := false
@@ -388,7 +406,40 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_close_card()
 	_drop_think()
 	_state.build(rng, difficulty)
+	_theme = _night_picture()
+	_sync_world()
 	_begin()
+
+## The night's thing for the topiary: {} on a day from New, off the daily,
+## or with no picture cached.
+func _night_picture() -> Dictionary:
+	if bank_step != 0 or daily_key == 0:
+		return {}
+	for side: int in THEME_SIZES:
+		var pic := ThemedPictures.picture(daily_key, side)
+		if not pic.is_empty():
+			return pic
+	return {}
+
+func themed() -> bool:
+	return not _theme.is_empty()
+
+## The world's topiary as the card stands: the day's thing (or the
+## windmill) and a band painted for every cup sunk.
+func _sync_world() -> void:
+	if _world == null:
+		return
+	_world.set_picture(_theme.get("rows", []) if themed() else [])
+	_world.reveal(_sunk_share())
+
+func _sunk_share() -> float:
+	var n: int = _state.holes.size()
+	if n == 0:
+		return 0.0
+	if _won or _state.is_solved():
+		return 1.0
+	var done: int = _state.index + (1 if _state.sim.sunk else 0)
+	return float(done) / float(n)
 
 ## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict): the
 ## course's holes out of content/minigolf.json, and the miner's putts for
@@ -423,6 +474,7 @@ func day_dict() -> Dictionary:
 	metrics.merge(counts)
 	return {
 		"source": "bank" if banked else "generator", "kind": "text",
+		"theme": String(_theme.get("id", "")),
 		"payload": {"holes": holes},
 		"solution": {"putts": putts, "par": pars},
 		"metrics": metrics,
@@ -463,6 +515,8 @@ func _fresh(t: float) -> void:
 	_old_hole = null
 	_swap_at = -100.0
 	_fresh_hole(t)
+	if _world != null:
+		_world.reveal(0.0)
 
 ## The hole in play, the ball on its tee.
 func _fresh_hole(t: float) -> void:
@@ -562,6 +616,7 @@ func set_clear(top: float, bottom: float, won := false) -> void:
 		_world.show_behind_parent = true
 		add_child(_world)
 		move_child(_world, 0)
+		_sync_world()
 		if won:
 			# Told a win before a playing span: the frame is the host's
 			# usual one until a layout says otherwise.
@@ -865,6 +920,10 @@ func _on_sunk(t: float) -> void:
 			_sticker(tr(word), col, n == 1 or d < 0)
 			if extra != "":
 				_sub_sticker(extra, Pal.SUN_RAY if banked > 0 else Pal.PAPER))
+	# The topiary's band paints with the word, whatever the swap is doing.
+	get_tree().create_timer(0.0 if Motion.reduce else SINK_TIME).timeout.connect(func():
+		if is_inside_tree():
+			_paint_topiary(i, last))
 	if n == 1 and not Motion.reduce:
 		fx.confetti(Vector2(_fs.x * 0.5, _band() + 20.0), 24, _fs.x * 0.8)
 	_say(tr(word), Face.Expr.JOY if d <= 0 else Face.Expr.HAPPY)
@@ -911,6 +970,19 @@ func _swap(t: float) -> void:
 	fx.cue("next")
 	_say(tr("GF_NEXT") % [_state.index + 1, _state.par()], Face.Expr.HAPPY)
 	moved.emit()
+
+## A themed day's cup sunk: the topiary's next band of rows takes its
+## beads, a sparkle on it; the last cup's finishes it with the theme cue
+## (the last cup's word is not sounded, so the cue has the moment).
+func _paint_topiary(i: int, last: bool) -> void:
+	if not themed() or _world == null:
+		return
+	_world.reveal(float(i + 1) / float(maxi(_state.holes.size(), 1)), true)
+	if not Motion.reduce:
+		fx.sparkle(_world.topiary_mid() - _fo, Pal.SUN_RAY)
+	if last:
+		fx.cue("theme")
+		fx.buzz(Haptics.GOOD)
 
 # --- the words ---
 
@@ -1702,7 +1774,18 @@ func _win_line() -> String:
 	return tr("GF_WIN_OVER") % [_state.total(), d]
 
 func flat_win() -> Dictionary:
+	if themed():
+		var d: int = _state.total() - _state.par_total()
+		var score := "%d (%s)" % [_state.total(), tr("GF_EVEN") if d == 0 else ("+%d" % d if d > 0 else "−%d" % -d)]
+		return {"faces": [], "subtitle": tr("GF_WIN_THEME") % [String(_theme.get("name", "")), score]}
 	return {"faces": [], "subtitle": _win_line()}
+
+## A themed day holds the win screen back until the topiary is whole and
+## seen (the card covers the foot it stands on).
+func win_lead() -> float:
+	if not themed() or Motion.reduce:
+		return 0.0
+	return SINK_TIME + World.PAINT_TIME + THEME_SEE
 
 ## The win screen waits for the party: the cat on the lawn and the seal.
 func win_delay() -> float:
@@ -1755,6 +1838,7 @@ func restore_completed_board() -> void:
 		_stamp_at = t - 100.0
 	_layout()
 	_place_cat(t)
+	_sync_world()
 	_say(tr("GF_DONE"), Face.Expr.JOY)
 
 func _now() -> float:

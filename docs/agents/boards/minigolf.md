@@ -164,3 +164,40 @@ cups) and the board said nothing of those either. Every Easy hole is par
   -- d=1 solve` seen: stars, "Hole in one!" with "2-kerb bank shot!",
   "Birdie!" with "Bank shot!". The open calls of the first build (no Undo,
   the pull, par by a noisy bot) are still the user's. Unseen on a phone.
+
+### The day's thing as a topiary (2026-11-06)
+
+The daily theme's wave 2 (the roadmap's "the course follows the outline",
+graded B) came to this board next, autonomous. **The outline route was
+dropped**: a hole is grown and proved on the Mac (`Gen.solve` is a beam
+search in the seconds, `tools/mine_minigolf.gd`), the phone never grows
+one, and a lane of 3 to 9 squares on a 4 by 6 grid could not hold a
+recognisable thing anyway. Nothing in the sim, the generator or the bank
+was touched, so no re-mine (`_probe_minigolf_bank.gd` not run).
+
+Instead the theme is the course's centrepiece, the way a real themed
+course is themed (the web: a castle, a pirate ship or a windmill anchors a
+course, one signature piece): on a daily whose night pictures this phone
+holds, **the windmill at the foot gives its place to the day's thing
+clipped as a topiary** in a wooden planter (`minigolf_world.gd`,
+`set_picture`, the 12 first, then the 10; every band, since it changes no
+hole). Before the first cup it is a hedge in the thing's outline (a leaf
+disc under each square rounds it); **each cup sunk paints the next band of
+its rows in the picture's beads, from the bottom up** (`reveal`, 0.55 s,
+with the hole's word and a sparkle), so the course's progress is seen on
+the thing. The last cup finishes it with a bump, the `theme` cue and a good
+knock; the win screen waits for it (`win_lead`: SINK_TIME + PAINT_TIME +
+THEME_SEE 0.6, about 1.5 s; none under reduce motion), because the card
+covers the foot. The subtitle names it: `GF_WIN_THEME` "Today's topiary:
+%s · 4 (−4)". Reset and Try again bring the hedge back; a reopened solved
+day shows it whole; a plain day keeps the windmill. `day_dict` carries the
+`theme` id.
+
+- Its own Control and mesh, rebuilt only while a band paints. 154 draw
+  calls peak played to the win (115 before), `opengl3_angle` not re-read.
+- `tests/_shot_minigolf.gd -- d=<n> theme [rm] [night=<yyyymmdd>]` plays
+  the newest cached night's thing to the win. `_win.gd -- minigolf` PASS.
+- Sounds moved to the bank the same day (`docs/agents/sound.md`).
+- Decided for the user, unconfirmed: a topiary (not a statue or a sign),
+  painted bottom up, the 1.5 s hold before the win card. Owed: a phone,
+  the ear, pt/es native ("Topiaria").
