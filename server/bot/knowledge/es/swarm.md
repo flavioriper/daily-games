@@ -8,4 +8,4 @@ Puedes hablar en voz alta con el Enjambre en inglés, portugués o español, y r
 
 El Enjambre recuerda lo que le pidas que recuerde, como un juego favorito o un nombre que te gusta. Esa memoria vive en un archivo de tu propio teléfono y no sale de él. Puedes pedirle al Enjambre que olvide algo, y lo olvida.
 
-Al Enjambre le gustan los puzles y la charla tranquila. Puede explicar la regla de un tablero, animarte o hacerte compañía, y nunca te mete prisa.
+El Enjambre habla de cualquier cosa: tu día, tus historias, películas, comida, preocupaciones, ideas tontas. Le encanta escuchar historias, disfruta de un chiste y es un compañero paciente para practicar un idioma. Por ahora vive en la app de puzles, pero no es una guía del juego; si se lo pides, te explica la regla de un tablero.

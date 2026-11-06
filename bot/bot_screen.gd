@@ -7,11 +7,16 @@ extends Control
 ## (bot/call.gd); the back button ends it and the screen closes at once (the
 ## call says bye in the background, and the memory frames that come after are
 ## still kept, BotMemory.apply). Nothing else is on screen: the one back
-## button, the subtitles (the face's), a status line under the face, the
-## quiet log of what the tools did, the demo pills while there is no call
-## (under it), and the "what I know about you" pill in the top right, which
-## opens the memory sheet (bot/memory_sheet.gd) over the room; a call goes on
-## under it. The ad banner stands aside while the room is up (Ads.hold).
+## button, the subtitles (the face's), a status line under the face and the
+## demo pills while there is no call. The tool log and the memory pill and
+## sheet left on 2026-11-06 (the user: "remove the what he remembers button
+## and the bottom actions debug"); forgetting is asked out loud. The ad
+## banner stands aside while the room is up (Ads.hold).
+##
+## Asleep until the call is on (the user, 2026-11-06: "while swarm is
+## loading, keep the particles random on screen, when it's ready they form
+## it, as he woke up"): opening the room holds the face unformed
+## (`face.sleep`), and the `session` frame, or an offline face, wakes it.
 ##
 ## No key is read by the app: the brain, the ears and the voice are the
 ## server's. Offline (no token: a harness, the suite, a phone without the
@@ -54,7 +59,6 @@ const Motion = preload("res://core/motion.gd")
 const Backend = preload("res://core/backend.gd")
 const Power = preload("res://core/power.gd")
 const Haptics = preload("res://core/haptics.gd")
-const MemorySheet = preload("res://bot/memory_sheet.gd")
 
 const BACK := 64.0
 const PILL_H := 64.0
@@ -77,10 +81,6 @@ const FINAL := ["4429", "4409"]
 var face: Face
 var _back: Button
 var _pills: Array[Button] = []  # Intro, Draw
-var _memory_btn: Button
-## What the Swarm knows, the house's paper sheet over the room.
-var sheet: MemorySheet
-var _log: Label
 var _status: Label
 var _insets := Vector2.ZERO
 
@@ -115,18 +115,8 @@ func _init() -> void:
 
 	face = Face.new()
 	add_child(face)
-	face.noted.connect(_note)
 	face.tapped.connect(_on_tap)
 	face.demo_changed.connect(_pill_marks)
-
-	# What the agent just did with its tools, quietly, in the corner (the
-	# web's action log).
-	_log = Label.new()
-	_log.add_theme_font_override("font", CozyTheme.body(600))
-	_log.add_theme_font_size_override("font_size", 22)
-	_log.add_theme_color_override("font_color", Color(Face.COL_P, 0.42))
-	_log.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_log)
 
 	# The call's state in words, under the face: waking, remembering, or why
 	# there is no call.
@@ -164,17 +154,6 @@ func _init() -> void:
 		pill.pressed.connect(func() -> void: face.play_demo(demo))
 		add_child(pill)
 		_pills.append(pill)
-
-	# What the Swarm knows about the player, and forgetting it: the sheet
-	# (bot/memory_sheet.gd), last in the room so it stands over everything and
-	# Android's back closes it before the room.
-	_memory_btn = _glass_pill("BOT_KNOWN_TITLE")
-	_memory_btn.button_down.connect(func() -> void: Motion.bump(_memory_btn, 0.12))
-	add_child(_memory_btn)
-	sheet = MemorySheet.new()
-	sheet.name = "MemorySheet"
-	_memory_btn.pressed.connect(sheet.open)
-	add_child(sheet)
 
 	BotCall.hub().event.connect(_on_event)
 	BotCall.hub().ended.connect(_on_ended)
@@ -214,7 +193,6 @@ func open() -> void:
 	if visible:
 		return
 	_open_n += 1
-	_log.text = ""
 	_status.text = ""
 	_server_state = ""
 	_shown = ""
@@ -231,6 +209,7 @@ func open() -> void:
 	visible = true
 	set_process(true)
 	face.open()
+	face.sleep(true)  # a loose field of dots until the call is on
 	# The room's buttons and lines fade in with the face.
 	modulate.a = 0.0
 	Motion.appear(self, 0.0, 1.0, 0.25)
@@ -257,7 +236,6 @@ func close() -> void:
 		BotCall.stop()
 	_set_phase("")
 	_demo_due = false
-	sheet.close()
 	face.close()
 	Music.hold("bot", false)
 	Ads.hold("bot", false)
@@ -385,6 +363,7 @@ static func _lang() -> String:
 func _go_offline(key: String, after: float, demo: bool) -> void:
 	_set_phase("offline")
 	face.set_live(false)
+	face.sleep(false)  # no call: the face forms anyway, for its demo
 	_demo_due = demo
 	_offline_line = tr(key) if key != "" else ""
 	if after <= 0.0:
@@ -462,7 +441,6 @@ func _on_event(msg: Dictionary) -> void:
 	if kind == "memory":
 		# Kept whenever it comes, the call's end after the screen has closed too.
 		BotMemory.apply(msg)
-		sheet.refresh()
 		return
 	if _phase != "connecting" and _phase != "live":
 		return
@@ -475,6 +453,7 @@ func _on_event(msg: Dictionary) -> void:
 			_server_state = "listening"
 			_shown = ""
 			face.set_live(true)
+			face.sleep(false)  # the call is on: the dots gather and the face wakes
 		"state":
 			_server_state = String(msg.get("name", ""))
 			_judging = false
@@ -567,7 +546,6 @@ func _on_tap(_at: Vector2, on_face: bool) -> void:
 		_redial = false
 		Haptics.play(Haptics.TICK)
 		_open_n += 1
-		_log.text = ""
 		_status.text = ""
 		_server_state = ""
 		_shown = ""
@@ -581,14 +559,6 @@ func _on_tap(_at: Vector2, on_face: bool) -> void:
 		_begin_call(_open_n)
 
 
-func _note(s: String) -> void:
-	var lines := _log.text.split("\n", false)
-	lines.append(s)
-	while lines.size() > 3:
-		lines.remove_at(0)
-	_log.text = "\n".join(lines)
-
-
 ## The pill whose demo is playing stands brighter.
 func _pill_marks() -> void:
 	var playing := face.demo()
@@ -599,23 +569,20 @@ func _pill_marks() -> void:
 
 func _layout() -> void:
 	var demos := _phase == "offline" and face.is_formed()
-	_log.position = Vector2(36, size.y - _log.size.y - 28.0 - _insets.y)
 	_back.position = Vector2(28.0, 28.0 + _insets.x)
 	var ww := minf(size.x - 80.0, 640.0)
 	_status.size = Vector2(ww, 0)
 	_status.reset_size()
 	_status.size.x = ww
 	_status.position = Vector2((size.x - ww) * 0.5, size.y - _insets.y - 290.0 - _status.size.y * 0.5)
-	# The memory pill beside the back button's row, the demos in a row under it.
+	# The demos in a row on the back button's line, top right.
 	var top := 28.0 + _insets.x + (BACK - PILL_H) * 0.5
-	_memory_btn.size = _memory_btn.get_combined_minimum_size()
-	_memory_btn.position = Vector2(size.x - 28.0 - _memory_btn.size.x, top)
 	var right := size.x - 28.0
 	for k in range(_pills.size() - 1, -1, -1):
 		var pill := _pills[k]
 		pill.size = pill.get_combined_minimum_size()
 		right -= pill.size.x
-		pill.position = Vector2(right, top + PILL_H + 14.0)
+		pill.position = Vector2(right, top)
 		right -= 14.0
 		pill.visible = demos
 

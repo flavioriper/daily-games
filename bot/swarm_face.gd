@@ -272,6 +272,9 @@ var _links_n := 0
 var _seeded := false
 var _formed := false
 var _gather := 0.0
+## Held as a loose field until woken (the room, while its call connects).
+var _asleep := false
+var _woke := false  # formed out of sleep: the eyes open late, as waking
 var _c := Vector2.ZERO
 var _cv := Vector2.ZERO
 var _R := 120.0
@@ -479,6 +482,8 @@ func open() -> void:
 			_times = parsed
 	_seeded = false
 	_formed = false
+	_asleep = false
+	_woke = false
 	_boot_t = 0.0
 	_step_i = -1
 	_step_wait = 0.0
@@ -1481,9 +1486,10 @@ func _process(delta: float) -> void:
 	_render(dt)
 
 ## Before the agent exists the dots are a loose field; then they are pulled
-## together and become a face.
+## together and become a face. Asleep, the field just drifts and the clock
+## waits; woken, the gather plays from its start.
 func _boot(dt: float) -> void:
-	if _formed:
+	if _formed or _asleep:
 		return
 	_boot_t += dt
 	if _boot_t > 0.4:
@@ -1494,6 +1500,27 @@ func _boot(dt: float) -> void:
 		_formed = true
 		_gather = 0.0
 		_note("form  the agent")
+		if _woke:
+			# Waking: the face forms with its eyes shut, then they open.
+			_woke = false
+			_eyes = 0.0
+			apply_swarm({"eyes": 0.0, "seconds": 0.7})
+
+## The room holds the face asleep while its call connects (the user,
+## 2026-11-06: "keep the particles random on screen, when it's ready they
+## form it, as he woke up"). Only an unformed face sleeps: one already formed
+## (a redial) stays as it is.
+func sleep(on: bool) -> void:
+	if on:
+		if not _formed:
+			_asleep = true
+			_gather = 0.0
+		return
+	if not _asleep:
+		return
+	_asleep = false
+	_woke = true
+	_boot_t = 0.0
 
 func _step() -> void:
 	_now += STEP * 1000.0

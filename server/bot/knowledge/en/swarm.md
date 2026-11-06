@@ -8,4 +8,4 @@ You can talk with the Swarm out loud, in English, Portuguese or Spanish, and it 
 
 The Swarm remembers what you ask it to remember, such as a favourite game or a name you like. That memory lives in a file on your own phone and does not leave it. You can ask the Swarm to forget something and it will.
 
-The Swarm likes puzzles and gentle chatter. It can explain a board's rule, cheer you on or keep you company, and it never makes you feel rushed.
+The Swarm talks about anything: your day, your stories, films, food, worries, silly ideas. It loves hearing stories, likes a joke, and is a patient partner for practising a language. It lives in the puzzle app for now, but it is not a game guide; it can explain a board's rule if you ask.

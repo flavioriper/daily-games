@@ -326,6 +326,59 @@ to agent creativity", then "do all"):
   stays on screen).
 - Probe: `tests/_probe_swarm_dials.gd` (untracked), 13 checks and snapshots.
 
+## A friend who talks about anything; the room trimmed; it wakes (2026-11-06)
+
+The user: "too robotic, not natural, it's too expressive even for small
+things", and it "should not talk about the puzzles (unless user ask, just like
+any subject), it only lives inside the daily game because it's the easier way
+to test the prototype". The Swarm is "a supportive, funny and full of jokes
+agent called swarm, that talks about any subject, love to hear histories from
+players. Players will probably use to practice a new language."
+
+- **Persona** (`seeds/swarm.json`): the identity no longer says it lives in a
+  puzzle game or asks how the puzzles are going; it talks about anything,
+  loves stories, jokes from what was just said, is supportive without syrup,
+  never brings up the game unless the player does, and with a learner recasts
+  a slip in its own reply instead of correcting it, explaining only when
+  asked or stuck. Style: match the player's energy, calm by default, small
+  things get small reactions, short replies, not a question every turn.
+- **Natural speech** (`voice/prompt.py`): the scripted quotas ("echo their
+  topic in a fragment", one "uh", "I mean" once in four replies) are gone;
+  OpenAI's realtime prompting guide notes a model overuses sample phrases
+  until it sounds robotic. In their place a variety rule: never two replies
+  opening the same way, no pattern of reactions, fillers or praise. The
+  `[knowledge:` rule says those lines are background, used only when they
+  answer the question, never a reason to steer the talk; the body's own
+  moves are for big news, a real laugh or a goodbye, and small.
+- **Audio tags**: one a reply (was two), 11 deliveries (dramatically,
+  singing, whispers, slowly, quickly, amazed, delighted, surprised,
+  reassuring and cute dropped) and 4 sounds (laughs, chuckles, sighs, hums),
+  plus a guidance line in `voice/bot.py`: most replies carry no tag, a short
+  or ordinary one never. Stability stays 0.5: a clip's file name hashes it,
+  so changing it re-renders all 450 clips (a dial to try by ear if it still
+  sounds dramatic).
+- **Greeting** without "I live in this little puzzle game"; the ten greeting
+  clips re-rendered (`render_clips`, only the greeting was new) and the old
+  ones deleted. `knowledge/*/swarm.md` says the same; the Neon copy is
+  updated only by `tools/sync_swarm_knowledge.py` (person-run, production).
+- **Language practice**: the call's language is still the game's (Flux
+  `general-en` for en, `general-multi` otherwise), so a learner sets the game
+  to the language they practise; no switching mid-call.
+- **The room**: the memory pill and sheet (`bot/memory_sheet.gd`, the
+  `BOT_KNOWN_*`, `BOT_FORGET`, `BOT_KEEP` rows, `_shot_menu.gd`'s `bot sheet`)
+  and the tool log in the bottom corner are gone (the user: "remove the what
+  he remembers button and the bottom actions debug"); forgetting is asked out
+  loud. The demo pills sit on the back button's row.
+- **It wakes**: "while swarm is loading, keep the particles random on screen,
+  when it's ready they form it, as he woke up". `open()` puts the face to
+  `sleep(true)`: the field drifts, the boot clock waits. The `session` frame,
+  or any offline end (no token, mic refused), calls `sleep(false)`: the
+  gather plays from its start, the face forms 1.3 s later with its eyes shut
+  and they open after 0.7 s. A face already formed (a redial) never sleeps.
+  Probe: `tests/_probe_swarm_sleep.gd` (untracked).
+- **Owed**: a deploy (`tools/deploy_bot.sh`) and the knowledge sync, both
+  person-run; hearing a real call; the pt/es greetings by a native ear.
+
 ## The tool bench: luna, terra, sol (2026-11-06)
 
 `tools/swarm_bench.py` with `tools/swarm_bench_cases.yaml` (15 cases, en/pt/es) puts the same player lines

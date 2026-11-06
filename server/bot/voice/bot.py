@@ -309,7 +309,7 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
 
     pipeline = Pipeline([transport.input(), s.stt, Listener(cue, steer.heard), pace, pair.user(), steer, s.llm, AfterLLM(steer), s.tts, clip_out, transport.output(), pair.assistant()])
     v = card.voice.expression
-    policy = ExpressionPolicy(delivery=v.deliveries, sounds=v.sounds, guidance=[ExpressionGuidance.MATCH_STYLE, f"Use at most {v.max_tags_per_reply} tags per reply."])
+    policy = ExpressionPolicy(delivery=v.deliveries, sounds=v.sounds, guidance=[ExpressionGuidance.MATCH_STYLE, f"Use at most {v.max_tags_per_reply} tags per reply.", "Most replies carry no tag at all: a short or ordinary reply never does. Tag only a real laugh at something funny, real sympathy or real excitement the person shares."])
     task = PipelineTask(pipeline, params=PipelineParams(enable_metrics=True, enable_usage_metrics=True, enable_expressive_conversation=v.max_tags_per_reply > 0, expression_policy=policy if v.max_tags_per_reply > 0 else None), observers=[ledger_obs, latency], enable_rtvi=False)  # RTVI would echo every transcript, token and metric to the phone
     ending: list[str] = []  # why the call ended: bye, cap or gone
 

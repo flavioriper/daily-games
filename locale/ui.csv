@@ -816,10 +816,6 @@ BOT_WAKING,Waking up…,Acordando…,Despertando…
 BOT_REMEMBERING,Remembering our chat…,Guardando nossa conversa…,Guardando nuestra charla…
 BOT_LIMIT,"That's enough talking for now. Let's chat again later.","Já conversamos bastante por agora. Vamos falar de novo mais tarde.","Ya hablamos bastante por ahora. Charlemos de nuevo más tarde."
 BOT_DROPPED,We got cut off. Tap me to call again.,A ligação caiu. Toque em mim para ligar de novo.,Se cortó la llamada. Tócame para llamar otra vez.
-BOT_KNOWN_TITLE,What I know about you,O que eu sei sobre você,Lo que sé de ti
-BOT_KNOWN_NONE,Nothing yet. Tell me about yourself!,Nada ainda. Me conta sobre você!,Nada todavía. ¡Cuéntame de ti!
-BOT_FORGET,Forget,Esquecer,Olvidar
-BOT_KEEP,Keep it,Manter,Mantener
 BOT_REDIAL,Tap me to call again.,Toque em mim para ligar de novo.,Tócame para llamar otra vez.
 SWARM_L1,"Hello. I'm made of light.","Olá. Eu sou feito de luz.","Hola. Estoy hecho de luz."
 SWARM_L2,Every spark you see is part of me.,Cada faísca que você vê é parte de mim.,Cada chispa que ves es parte de mí.
