@@ -2,9 +2,50 @@
 # Builds the Swarm's call audio plugin (native/swarm_voice) into addons/swarm_voice.
 # Android: both AARs with the plugin's gradle wrapper, against android/build's godot-lib.
 # docs/agents/bot.md, "Echo cancelling".
+# iOS: debug and release xcframeworks (device + simulator) into ios/plugins/swarm_voice,
+# compiled against ~/dev/godot-4.7-src with the defines its iOS templates use.
+# `--ios` builds only iOS, `--android` only Android; nothing builds both.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT=$PWD
+want_android=1; want_ios=1
+case "${1:-}" in
+  --ios) want_android=0 ;;
+  --android) want_ios=0 ;;
+esac
+
+if [ $want_ios = 1 ]; then
+  G="${GODOT_SRC:-$HOME/dev/godot-4.7-src}"
+  test -f "$G/core/object/object.h" || { echo "no Godot source at $G (GODOT_SRC)"; exit 1; }
+  OUT="$ROOT/ios/plugins/swarm_voice"
+  TMP="$(mktemp -d)"
+  mkdir -p "$OUT"
+  for cfg in debug release; do
+    defs="-DIOS_ENABLED -DAPPLE_EMBEDDED_ENABLED -DUNIX_ENABLED -DCOREAUDIO_ENABLED -DTHREADS_ENABLED"
+    if [ $cfg = debug ]; then defs="$defs -DDEBUG_ENABLED"; else defs="$defs -DNDEBUG"; fi
+    args=()
+    for sdk in iphoneos iphonesimulator; do
+      mkdir -p "$TMP/$cfg/$sdk"
+      if [ $sdk = iphoneos ]; then min=-miphoneos-version-min=14.0; else min=-mios-simulator-version-min=14.0; fi
+      # Godot's simulator template is x86_64 (and arm64 on newer ones): give the simulator both
+      if [ $sdk = iphoneos ]; then archs="arm64"; else archs="arm64 x86_64"; fi
+      objs=()
+      for arch in $archs; do
+        xcrun -sdk $sdk clang++ -c native/swarm_voice/ios/swarm_voice.mm -o "$TMP/$cfg/$sdk/swarm_voice.$arch.o" \
+          -arch $arch -isysroot "$(xcrun --sdk $sdk --show-sdk-path)" $min -std=gnu++17 -fobjc-arc -fno-exceptions \
+          -fvisibility=hidden -O2 -I"$G" -I"$G/platform/ios" $defs
+        objs+=("$TMP/$cfg/$sdk/swarm_voice.$arch.o")
+      done
+      xcrun -sdk $sdk libtool -static -o "$TMP/$cfg/$sdk/libswarm_voice.a" "${objs[@]}"
+      args+=(-library "$TMP/$cfg/$sdk/libswarm_voice.a")
+    done
+    rm -rf "$OUT/SwarmVoice.$cfg.xcframework"
+    xcodebuild -create-xcframework "${args[@]}" -output "$OUT/SwarmVoice.$cfg.xcframework" > /dev/null
+  done
+  rm -rf "$TMP"
+  echo "built ios/plugins/swarm_voice/SwarmVoice.{debug,release}.xcframework"
+fi
+[ $want_android = 1 ] || exit 0
 # the SDK Godot exports with; this Mac's ANDROID_HOME names an empty folder
 for d in "${ANDROID_HOME:-}" /opt/homebrew/share/android-commandlinetools "$HOME/Library/Android/sdk"; do
   if [ -n "$d" ] && [ -d "$d/platforms" ]; then export ANDROID_HOME="$d"; break; fi

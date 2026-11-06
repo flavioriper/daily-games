@@ -141,7 +141,7 @@ are committed, as Firebase's; `android/` is not in git), and
   `pushVoice`, `clearVoice`, `played`, `queued`, `level`); logcat tag
   `SwarmVoice` prints `started: aec=… ns=… agc=…`.
 - **`bot/call.gd`** uses it when `Engine.has_singleton("SwarmVoice")` and
-  `start()` succeeds; otherwise (desktop, iOS for now, a failed start, the
+  `start()` succeeds; otherwise (desktop, a failed start, the
   probe's test tone) Godot's mic and generator as before. `consumed()`,
   `playing()` and `level()` read the plugin then, so the subtitles and the
   face keep pace with the speaker.
@@ -152,16 +152,30 @@ are committed, as Firebase's; `android/` is not in git), and
 - **Music** is already held for the whole call (`Music.hold("bot")`): on iOS
   the canceller only removes what plays through its own unit, so nothing of
   the game's may play during a call.
-- **iOS** is owed: `AVAudioEngine` with `setVoiceProcessingEnabled(true)`
-  (set while stopped; one I/O node turns on both), session `.playAndRecord`
-  / `.voiceChat` / `.defaultToSpeaker`, the mic tap converted to 16 kHz
-  int16, the voice from an `AVAudioSourceNode` reading a ring (that is the
-  canceller's reference), a `.gdip` with debug and release xcframeworks built
-  against `~/dev/godot-4.7-src`'s headers. `.voiceChat` alone over Godot's
-  `RemoteIO` does not cancel anything.
+- **iOS** (`native/swarm_voice/ios/swarm_voice.mm`, the same methods):
+  one `AVAudioEngine` with `setVoiceProcessingEnabled(true)` on the input
+  node (set while stopped; one I/O node turns on both), session
+  `.playAndRecord` / `.voiceChat` / `.defaultToSpeaker` + Bluetooth HFP, put
+  back at the call's end; the mic tap through an `AVAudioConverter`
+  (downmix) to 16 kHz int16, the voice from an `AVAudioSourceNode` reading a
+  ring (that is the canceller's reference), ducking of other audio at its
+  minimum on iOS 17+. `.voiceChat` alone over Godot's `RemoteIO` cancels
+  nothing. `tools/build_swarm_voice.sh --ios` compiles it against
+  `~/dev/godot-4.7-src` with the iOS template's defines (`IOS_ENABLED
+  APPLE_EMBEDDED_ENABLED UNIX_ENABLED COREAUDIO_ENABLED THREADS_ENABLED`, plus
+  `DEBUG_ENABLED` for the debug one, `NDEBUG` for release) into
+  `ios/plugins/swarm_voice/SwarmVoice.{debug,release}.xcframework` (device
+  arm64, simulator arm64 + x86_64), enabled as `plugins/SwarmVoice=true` in
+  the iOS preset. Checked 2026-11-05: the debug export links for the
+  x86_64 simulator and an arm64 device, and a `--export-release` project
+  links the release one for a device; **never run**: the iOS 26 simulator no
+  longer runs x86_64 apps and Godot 4.7's simulator template has no arm64,
+  so the first run is a TestFlight build on a phone. Watch there that the
+  game's own sounds come back after a call (the session is put back).
 - **Owed on the phone**: speaker on, talk over the Swarm mid-sentence (it
   stops, `clear` comes), pause mid-thought and go on (one turn, not two);
-  check logcat says `aec=true` on the ROG.
+  check logcat says `aec=true` on the ROG; on iOS (TestFlight) the same, the
+  device log says `SwarmVoice: started, voice processing 1`.
 
 ## Testing a call locally
 

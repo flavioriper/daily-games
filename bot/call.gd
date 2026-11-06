@@ -18,12 +18,12 @@ extends Node
 ## Nothing here asks for the mic permission or reads `Backend`: the screen
 ## does both and hands `start` the token ("" means offline, nothing dialled).
 
-## On a phone with the SwarmVoice plugin (Android, native/swarm_voice) both
+## On a phone with the SwarmVoice plugin (native/swarm_voice, Android and iOS) both
 ## directions go through the phone's voice-call path instead of Godot's audio:
 ## the mic records with the phone's echo canceller and the Swarm's voice plays
 ## where that canceller hears it, so the mic stays open while the Swarm talks
 ## (full duplex, `full_duplex()`), as in the browser. Without the plugin (desktop,
-## iOS until its plugin, a phone where it failed to start) Godot's raw mic is
+## a phone where it failed to start, the probe's test tone) Godot's raw mic is
 ## used and the screen gates it with send_silence: zeros go up in the mic's
 ## place while the Swarm talks (half duplex), so the frames keep their pace and
 ## the server hears silence, never a gap. docs/agents/bot.md, "Echo cancelling".

@@ -1,0 +1,16 @@
+[config]
+
+name="SwarmVoice"
+binary="SwarmVoice.xcframework"
+
+initialization="initialize_swarm_voice_module"
+deinitialization="uninitialize_swarm_voice_module"
+
+[dependencies]
+
+linked=[]
+embedded=[]
+system=["AVFoundation.framework", "AudioToolbox.framework"]
+capabilities=[]
+files=[]
+linker_flags=[]
