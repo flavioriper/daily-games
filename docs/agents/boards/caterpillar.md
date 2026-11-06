@@ -233,3 +233,65 @@ turns" in en/pt/es. No blush on Insane (as on Hard). The Peckish code, its
 locale rows, `content/insane/caterpillar.json` and
 `tools/insane/caterpillar_ladder.gd` stay in the tree, unread. Mine: the
 depth 12, Undo back on Insane.
+
+## The garden is cut to the day's thing (2026-11-06)
+
+Wave 2 of the daily theme roadmap. On a daily whose night pictures this
+phone holds, Easy, Medium and Hard lay the garden in one of the theme's
+things; Insane stays the plain 8 x 8.
+
+- **The cut** (`Gen.shape_fit`): Easy tries the 10 then the 12, Medium the
+  12 then the 10, Hard the 12 then the 24 (a 24 or 32 brought down to eight
+  squares loses the thing), in a box a square bigger than the band's first
+  (6, 7, 8; never past 8 x 8, the proof's masks are 64 bits), then the
+  band's own. Hedgehogs' smoothing, Quilt's hole filling, laid in the cut's
+  own extent. Kept when it has at least 0.75 of the band's squares, at most
+  30 / 40 / 52, at most 0.92 of its bounding box, and a checkerboard count
+  at most one apart (otherwise no walk covers it).
+- **The walk** (`Gen._stir_shape`): there is no zigzag on a cut, so one walk
+  is found by a node-capped search (`SEED_CAP` 3000, `SEED_STARTS` 4: each
+  step onto the free neighbour with the fewest ways on, a neighbour the head
+  alone reaches pruned), then stirred by the same backbites (`_backbite`,
+  shared with the square garden's `_stir`, which deals the same gardens as
+  before: 100 deals over four bands hash alike before and after). Every
+  mask the proof reads (`context`, `count`, `stuck_at`, `_make_readable`,
+  `_nbrs`) takes the cut's `mask`; the squares outside it are void
+  (`State.is_void`, `adjacent()` false toward them, `size()` is the walk's
+  length and `box()` the box's). A cut whose garden is not proved deals
+  nothing and the next thing is tried, each off `rng.seed ^ hash(id)`, then
+  the square garden off the untouched rng.
+- **Measured** (`tests/_probe_cat_theme.gd`, the 24 cached nights,
+  uncapped re-proof, the careful guesser of `_probe_cat_fun.gd`): Easy
+  20/24 themed, worst deal 53 ms, wasted 2.1 (plain 2.8); Medium 19/24,
+  44 ms, wasted 3.2 (plain 6.6); Hard 16/24, 98 ms, wasted 10.6 (plain
+  17.7); 0 gardens with two walks. A third thing on Hard took a day to
+  514 ms, and a 20000-node seed search 445 ms on a cut with no walk, hence
+  two things and the 3000 cap. **Themed gardens read easier than square
+  ones** (their edges force turns); decided for the user. Insane themed
+  wasted 39 against the plain 84, half the board it is meant to be, so
+  Insane is never cut.
+- **The bed**: the void squares are low untiled lawn in the bed (darker,
+  a tuft on some), the frame stays the box; a press there is no square
+  (`_cell_at`), a row's sparkle counts only garden squares.
+- **The win** (`_shed_at`, `_body_level`, `_paint_level`, `_draw_paint`):
+  as the butterfly unfolds out of the head the body fades over
+  `SHED_FADE` (it has become the butterfly) and the walked squares take the
+  picture's beads (`Pal.PG_BEADS`, raised rounded tiles, a pale bead shaded)
+  in the walk's own order, tail to head, over `PAINT_SPAN`: the walk drew
+  the day's thing. The badges and numbers fade with the body; the fences
+  stay. The `theme` cue rings as it starts, the party waits `THEME_HOLD`
+  0.9 s so its confetti falls on the picture and its note stays clear, the
+  card reads `CP_WIN_THEME` ("Today's garden: %s."), the cat curls on the
+  frame off the picture, and a reopened day shows the picture with no body.
+  Under reduce motion the picture is simply there.
+- `tests/_shot_caterpillar.gd -- d=<0..2> [night=YYYYMMDD] theme` re-deals
+  in a cached night's things (the newest by default), solves in one drag,
+  shoots the shed and the paint, and reopens. `opengl3_angle`, 810x1440:
+  153 draw calls peak on Easy, Medium and Hard (plain solve 157 in the same
+  session). `_win.gd -- caterpillar` PASS.
+- Sounds: `munch` moved to the bank's token, `refuse` to the tongue, `slip`
+  to the lip (the house sound), `theme` new. Unheard.
+- Decided for the user, unconfirmed: the shed-and-paint reveal (the body
+  goes, which no square garden does), Insane left plain, themed gardens
+  reading easier. Owed: a phone, the ear, a pt/es native read of
+  CP_WIN_THEME.

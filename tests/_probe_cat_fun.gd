@@ -58,7 +58,7 @@ func _ways(st) -> Array:
 	var out := []
 	var h: int = st.head()
 	for nb in [h - 1, h + 1, h - st.cols, h + st.cols]:
-		if nb < 0 or nb >= st.size() or not st.adjacent(h, nb) or st.body.has(nb):
+		if nb < 0 or nb >= st.box() or not st.adjacent(h, nb) or st.body.has(nb):
 			continue
 		if st.why(nb) != "":
 			continue

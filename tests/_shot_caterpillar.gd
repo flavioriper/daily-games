@@ -48,6 +48,8 @@ func _initialize() -> void:
 			_reduce = true
 		elif a.begins_with("out="):
 			_dir = a.substr(4)
+		elif a.begins_with("night="):
+			pass
 		else:
 			_mode = a
 	var progress = load("res://core/progress.gd")
@@ -73,6 +75,8 @@ func _process(delta: float) -> bool:
 		_menu._open_at(entry, _level)
 		_host = _menu.get_child(_menu.get_child_count() - 1)
 		_puzzle = _host._puzzle
+		if _mode == "theme":
+			_redeal_themed()
 		if _host.has_node("HowToPlay"):
 			_host.get_node("HowToPlay").free()
 		_script()
@@ -204,6 +208,23 @@ func _lay(count: int) -> void:
 func _script() -> void:
 	var st = _puzzle._state
 	match _mode:
+		"theme":
+			# the newest cached night's thing: at rest, solved in one drag,
+			# the shed and the paint, then the day reopened (restore)
+			_at(1.2, _shot.bind("_rest"))
+			_at(1.5, func() -> void: _drag(_answer(st.size()), 1.0))
+			var t1 := 1.5 + float(st.size()) / 50.0 + 0.4
+			_at(t1, func() -> void:
+				print("solved %s, themed %s, win_delay %.2f, subtitle: %s" % [_puzzle.is_done(),
+					st.themed(), _puzzle.win_delay(), _puzzle.flat_win().subtitle]))
+			_ms_from = t1
+			for dt in [0.5, 1.2, 1.5, 1.8, 2.4, 3.4]:
+				_at(t1 + dt, _shot.bind("_%02d" % int(dt * 10)))
+			_at(t1 + 4.6, func() -> void:
+				_puzzle.completed_record = _puzzle.completion_record()
+				_puzzle.restore_completed_board())
+			_at(t1 + 5.2, _shot.bind("_reopen"))
+			_end = t1 + 5.3
 		"rest":
 			_at(1.5, _shot)
 			_at(2.1, _shot)
@@ -329,3 +350,31 @@ func _script() -> void:
 				_puzzle.completed_record = {"hearts": _puzzle.max_hearts, "flawless": true}
 				_puzzle.restore_completed())
 			_at(1.5, _shot)
+
+## The board dealt again in the newest cached night's things, as a themed
+## daily deals it (the harness's backend never starts).
+func _redeal_themed() -> void:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var pick := String(files[-1])
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("night="):
+			pick = "pictures-%s-content.json" % a.substr(6)
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + pick))
+	var pics: Array = []
+	var gen = load("res://puzzles/caterpillar_gen.gd")
+	for side in gen.THEMED_SIZES[mini(_level, gen.THEMED_SIZES.size() - 1)]:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			var nm = p.get("name")
+			pics.append({"id": "themed_" + String(p.id), "rows": p.rows,
+				"name": String(nm.get("en", p.id)) if nm is Dictionary else String(p.id)})
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261106 + _level
+	_puzzle._state.build(rng, _level, 0, pics)
+	_puzzle._dealt_garden(_level)
+	print("theme: ", pick, " -> ", _puzzle._state.theme.get("name", "(plain)"))

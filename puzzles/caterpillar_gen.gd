@@ -55,12 +55,24 @@ static func band(difficulty: int) -> Dictionary:
 ## {cols, rows, path: PackedInt32Array (the answer, cell = y * cols + x),
 ##  leaves: PackedInt32Array (the cell of leaf 1, leaf 2, ...),
 ##  hedges: PackedInt32Array (edge keys, see edge_key), unique: bool}
-static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
+##
+## `shape` (shape_fit's, the day's thing) lays the garden in its cut: its box,
+## its squares (`mask`), a walk seeded over them. A shape whose garden is not
+## proved returns {}, and the board deals the square garden.
+static func generate(rng: RandomNumberGenerator, difficulty: int, shape: Dictionary = {}) -> Dictionary:
 	var b := band(difficulty)
 	var w := int(b.cols)
 	var h := int(b.rows)
-	var n := w * h
-	var p := _stir(rng, w, h)
+	var mask := -1
+	if not shape.is_empty():
+		w = int(shape.cols)
+		h = int(shape.rows)
+		mask = int(shape.mask)
+	var cells := _cells_of(w, h, mask)
+	var n := cells.size()
+	var p := _stir(rng, w, h) if shape.is_empty() else _stir_shape(rng, w, h, mask, cells)
+	if p.is_empty():
+		return {}
 	var on_path := {}
 	for i in n - 1:
 		on_path[edge_key(p[i], p[i + 1])] = true
@@ -80,15 +92,15 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 	var tries := 0
 	while hedges.size() < hedge_target and tries < 200:
 		tries += 1
-		var c := rng.randi_range(0, n - 1)
-		var ns := _nbrs(w, h, c)
+		var c: int = cells[rng.randi_range(0, n - 1)]
+		var ns := _nbrs(w, h, c, mask)
 		var m: int = ns[rng.randi_range(0, ns.size() - 1)]
 		if not on_path.has(edge_key(c, m)):
 			hedges[edge_key(c, m)] = true
 
 	var unique := false
 	for g in n:
-		var s := count(w, h, _leaves_of(p, idx), hedges.keys(), 2, cap)
+		var s := count(w, h, _leaves_of(p, idx), hedges.keys(), 2, cap, 0, mask)
 		if s.count == 1 and not s.capped:
 			unique = true
 			break
@@ -124,7 +136,7 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 
 	var look := int(b.get("look", 0))
 	if unique and look > 0:
-		_make_readable(rng, w, h, p, idx, hedges, on_path, look, hedge_max)
+		_make_readable(rng, w, h, p, idx, hedges, on_path, look, hedge_max, mask)
 	if unique:
 		# Leaves come off again while the garden stays proved and, on a
 		# band that reads, readable: the fewest leaves that still let a
@@ -140,33 +152,47 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 			if idx.size() <= floor_k:
 				break
 			idx.erase(v)
-			var ok := proved(w, h, _leaves_of(p, idx), hedges.keys(), cap)
+			var ok := proved(w, h, _leaves_of(p, idx), hedges.keys(), cap, mask)
 			if ok and look > 0:
-				ok = stuck_at(context(w, h, _leaves_of(p, idx), hedges.keys()), p, look) < 0
+				ok = stuck_at(context(w, h, _leaves_of(p, idx), hedges.keys(), 0, mask), p, look) < 0
 			if not ok:
 				idx[v] = true
 
-	return {"cols": w, "rows": h, "path": p, "leaves": _leaves_of(p, idx),
+	if not unique and not shape.is_empty():
+		return {}
+	var out := {"cols": w, "rows": h, "path": p, "leaves": _leaves_of(p, idx),
 		"hedges": PackedInt32Array(hedges.keys()), "unique": unique}
+	if mask != -1:
+		out["mask"] = mask
+	return out
 
 ## Exactly one walk, found inside the node cap. A capped search is never a
 ## proof, however many walks it had found when it stopped.
-static func proved(w: int, h: int, leaves: PackedInt32Array, hedges: Array, cap := NODE_CAP) -> bool:
-	var s := count(w, h, leaves, hedges, 2, cap)
+static func proved(w: int, h: int, leaves: PackedInt32Array, hedges: Array, cap := NODE_CAP, mask := -1) -> bool:
+	var s := count(w, h, leaves, hedges, 2, cap, 0, mask)
 	return s.count == 1 and not s.capped
 
 ## An edge between two orthogonal neighbours, order-free.
 static func edge_key(a: int, b: int) -> int:
 	return mini(a, b) * 4096 + maxi(a, b)
 
-static func _nbrs(w: int, h: int, c: int) -> Array:
+## `mask` keeps only the squares whose bit it has (-1: the whole field).
+static func _nbrs(w: int, h: int, c: int, mask := -1) -> Array:
 	var x := c % w
 	var y := c / w
 	var out := []
-	if x > 0: out.append(c - 1)
-	if x < w - 1: out.append(c + 1)
-	if y > 0: out.append(c - w)
-	if y < h - 1: out.append(c + w)
+	if x > 0 and mask & (1 << (c - 1)): out.append(c - 1)
+	if x < w - 1 and mask & (1 << (c + 1)): out.append(c + 1)
+	if y > 0 and mask & (1 << (c - w)): out.append(c - w)
+	if y < h - 1 and mask & (1 << (c + w)): out.append(c + w)
+	return out
+
+## The garden's squares in scan order: every cell of the box, or the cut's.
+static func _cells_of(w: int, h: int, mask: int) -> Array:
+	var out := []
+	for c in w * h:
+		if mask & (1 << c):
+			out.append(c)
 	return out
 
 static func _leaves_of(p: PackedInt32Array, idx: Dictionary) -> PackedInt32Array:
@@ -185,14 +211,21 @@ static func _stir(rng: RandomNumberGenerator, w: int, h: int) -> PackedInt32Arra
 	for y in h:
 		for x in w:
 			p[y * w + x] = y * w + (w - 1 - x if y % 2 == 1 else x)
+	_backbite(rng, p, w, h, -1, n * STIR)
+	return p
+
+## Stirs a walk `p` over the squares of `mask` with `moves` backbites from
+## either end. Every backbite keeps a walk over every square.
+static func _backbite(rng: RandomNumberGenerator, p: PackedInt32Array, w: int, h: int, mask: int, moves: int) -> void:
+	var n := p.size()
 	var pos := PackedInt32Array()
-	pos.resize(n)
+	pos.resize(w * h)
 	for i in n:
 		pos[p[i]] = i
-	for s in n * STIR:
+	for s in moves:
 		if rng.randi() & 1:
 			# Bite from the head: head joins neighbour at j, reverse j+1..n-1.
-			var ns := _nbrs(w, h, p[n - 1])
+			var ns := _nbrs(w, h, p[n - 1], mask)
 			var j := pos[ns[rng.randi_range(0, ns.size() - 1)]]
 			if j == n - 2:
 				continue
@@ -207,7 +240,7 @@ static func _stir(rng: RandomNumberGenerator, w: int, h: int) -> PackedInt32Arra
 				a += 1
 				z -= 1
 		else:
-			var ns := _nbrs(w, h, p[0])
+			var ns := _nbrs(w, h, p[0], mask)
 			var j := pos[ns[rng.randi_range(0, ns.size() - 1)]]
 			if j == 1:
 				continue
@@ -221,7 +254,74 @@ static func _stir(rng: RandomNumberGenerator, w: int, h: int) -> PackedInt32Arra
 				pos[p[z]] = z
 				a += 1
 				z -= 1
-	return p
+
+## A walk over the cut's squares: one found by a node-capped search, each
+## step onto the free neighbour with the fewest ways on (ties drawn), then
+## stirred as the square garden's is. Empty when the cut has no walk the
+## search finds inside SEED_CAP (a checkerboard count more than one apart
+## has none at all).
+const SEED_CAP := 3000
+const SEED_STARTS := 4
+static func _stir_shape(rng: RandomNumberGenerator, w: int, h: int, mask: int, cells: Array) -> PackedInt32Array:
+	var n := cells.size()
+	var black := 0
+	for c: int in cells:
+		if (c % w + c / w) % 2 == 0:
+			black += 1
+	var diff := black - (n - black)
+	if absi(diff) > 1:
+		return PackedInt32Array()
+	var starts := cells.duplicate()
+	for i in range(starts.size() - 1, 0, -1):
+		var j := rng.randi_range(0, i)
+		var t = starts[i]
+		starts[i] = starts[j]
+		starts[j] = t
+	var tried := 0
+	for s: int in starts:
+		# With one colour more, a walk starts and ends on that colour.
+		if diff != 0 and (((s % w + s / w) % 2 == 0) != (diff > 0)):
+			continue
+		tried += 1
+		if tried > SEED_STARTS:
+			break
+		var p := PackedInt32Array([s])
+		var ctx := {"nodes": 0}
+		if _ham(rng, w, h, s, mask & ~(1 << s), p, ctx):
+			_backbite(rng, p, w, h, mask, n * STIR)
+			return p
+	return PackedInt32Array()
+
+static func _ham(rng: RandomNumberGenerator, w: int, h: int, head: int, free: int, p: PackedInt32Array, ctx: Dictionary) -> bool:
+	if free == 0:
+		return true
+	ctx.nodes += 1
+	if ctx.nodes > SEED_CAP:
+		return false
+	var opts: Array = []
+	var dead := 0
+	for m: int in _nbrs(w, h, head, free):
+		var on := _nbrs(w, h, m, free & ~(1 << m)).size()
+		opts.append([on, rng.randf(), m])
+	# A free neighbour whose only way in is the head is stranded whichever
+	# way the head goes, unless it is the last square.
+	for m: int in _nbrs(w, h, head, free):
+		if _nbrs(w, h, m, free & ~(1 << m)).is_empty() and free != (1 << m):
+			dead += 1
+	if dead > 0:
+		return false
+	opts.sort_custom(func(a, b): return a[0] < b[0] or (a[0] == b[0] and a[1] < b[1]))
+	for o in opts:
+		var m: int = o[2]
+		if o[0] == 0 and free != (1 << m):
+			continue
+		p.append(m)
+		if _ham(rng, w, h, m, free & ~(1 << m), p, ctx):
+			return true
+		p.resize(p.size() - 1)
+		if ctx.nodes > SEED_CAP:
+			return false
+	return false
 
 # ------------------------------------------------------------------ the proof
 #
@@ -233,9 +333,11 @@ static func _stir(rng: RandomNumberGenerator, w: int, h: int) -> PackedInt32Arra
 ## The masks every search and judge reads: which cells have an open edge on
 ## each side, the leaves by cell, the last leaf's bit and, on Peckish, the
 ## middle leaves' bits (`food`) and the tummy (`hunger`).
-static func context(w: int, h: int, leaves: PackedInt32Array, hedges: Array, hunger := 0) -> Dictionary:
+static func context(w: int, h: int, leaves: PackedInt32Array, hedges: Array, hunger := 0, mask := -1) -> Dictionary:
 	var n := w * h
 	var ctx := {"w": w, "n": n, "hunger": hunger}
+	var full := -1 if n == 64 else (1 << n) - 1
+	ctx.full = full & mask
 	var hs := {}
 	for e in hedges:
 		hs[e] = true
@@ -246,10 +348,12 @@ static func context(w: int, h: int, leaves: PackedInt32Array, hedges: Array, hun
 	for c in n:
 		var x := c % w
 		var y := c / w
-		if x < w - 1 and not hs.has(edge_key(c, c + 1)): r |= 1 << c
-		if x > 0 and not hs.has(edge_key(c, c - 1)): l |= 1 << c
-		if y < h - 1 and not hs.has(edge_key(c, c + w)): d |= 1 << c
-		if y > 0 and not hs.has(edge_key(c, c - w)): u |= 1 << c
+		if not (mask & (1 << c)):
+			continue
+		if x < w - 1 and mask & (1 << (c + 1)) and not hs.has(edge_key(c, c + 1)): r |= 1 << c
+		if x > 0 and mask & (1 << (c - 1)) and not hs.has(edge_key(c, c - 1)): l |= 1 << c
+		if y < h - 1 and mask & (1 << (c + w)) and not hs.has(edge_key(c, c + w)): d |= 1 << c
+		if y > 0 and mask & (1 << (c - w)) and not hs.has(edge_key(c, c - w)): u |= 1 << c
 	ctx.r = r
 	ctx.l = l
 	ctx.d = d
@@ -272,14 +376,13 @@ static func context(w: int, h: int, leaves: PackedInt32Array, hedges: Array, hun
 ## Counts walks from leaf 1 over every cell, leaves in order, ending on the
 ## last leaf, up to `limit`. {count, walks (the first `limit` found), capped}.
 static func count(w: int, h: int, leaves: PackedInt32Array, hedges: Array, limit: int, cap: int,
-		hunger := 0) -> Dictionary:
-	var n := w * h
-	var ctx := context(w, h, leaves, hedges, hunger)
+		hunger := 0, mask := -1) -> Dictionary:
+	var ctx := context(w, h, leaves, hedges, hunger, mask)
 	ctx.limit = limit
 	ctx.cap = cap
 	ctx.nodes = 0
 	ctx.walks = []
-	var full := -1 if n == 64 else (1 << n) - 1
+	var full: int = ctx.full
 	var path := PackedInt32Array([leaves[0]])
 	_walk(ctx, leaves[0], 2, full & ~(1 << leaves[0]), path, hunger)
 	return {"count": ctx.walks.size(), "walks": ctx.walks, "capped": ctx.nodes > cap}
@@ -407,12 +510,11 @@ static func popcount(x: int) -> int:
 ## The first step of the answer at which some other way survives `look`
 ## squares, or -1 when none does.
 static func stuck_at(ctx: Dictionary, p: PackedInt32Array, look: int) -> int:
-	var n: int = ctx.n
-	var full := -1 if n == 64 else (1 << n) - 1
+	var full: int = ctx.full
 	var head := p[0]
 	var next := 2
 	var free := full & ~(1 << head)
-	for i in range(1, n):
+	for i in range(1, p.size()):
 		for mv in _moves(ctx, head, next, free):
 			if int(mv[0]) == p[i]:
 				continue
@@ -467,10 +569,10 @@ static func _alive(ctx: Dictionary, head: int, next: int, free: int, depth: int)
 ## the stray way's edge, else a leaf on the next square. Adding a clue only
 ## kills ways, so the turns before stay read.
 static func _make_readable(rng: RandomNumberGenerator, w: int, h: int, p: PackedInt32Array,
-		idx: Dictionary, hedges: Dictionary, on_path: Dictionary, look: int, hedge_max: int) -> void:
-	var n := w * h
+		idx: Dictionary, hedges: Dictionary, on_path: Dictionary, look: int, hedge_max: int, mask := -1) -> void:
+	var n := p.size()
 	for guard in n:
-		var i := stuck_at(context(w, h, _leaves_of(p, idx), hedges.keys()), p, look)
+		var i := stuck_at(context(w, h, _leaves_of(p, idx), hedges.keys(), 0, mask), p, look)
 		if i < 0:
 			return
 		var done := false
@@ -485,7 +587,7 @@ static func _make_readable(rng: RandomNumberGenerator, w: int, h: int, p: Packed
 			if at <= 0 or at >= n - 1 or idx.has(at):
 				continue
 			idx[at] = true
-			var k := stuck_at(context(w, h, _leaves_of(p, idx), hedges.keys()), p, look)
+			var k := stuck_at(context(w, h, _leaves_of(p, idx), hedges.keys(), 0, mask), p, look)
 			if k < 0 or k > i:
 				done = true
 				break
@@ -493,9 +595,8 @@ static func _make_readable(rng: RandomNumberGenerator, w: int, h: int, p: Packed
 		if done:
 			continue
 		if hedges.size() < hedge_max:
-			var ctx := context(w, h, _leaves_of(p, idx), hedges.keys())
 			var head := p[i - 1]
-			for c in _nbrs(w, h, head):
+			for c in _nbrs(w, h, head, mask):
 				var e := edge_key(head, c)
 				if c != p[i] and not on_path.has(e) and not hedges.has(e) and p.find(c) > i:
 					hedges[e] = true
@@ -647,3 +748,79 @@ static func _eaten_on(ctx: Dictionary, on: Dictionary) -> int:
 		if ctx.clue[c] != 0:
 			k += 1
 	return k
+
+# --- the day's shape (daily theme, wave 2, 2026-11-06) ---
+#
+# On a daily whose night pictures this phone holds, the garden is laid in one
+# of the theme's things: the picture cut to a box a square bigger than the
+# band's (a thing reads better a square bigger), smoothed as Hedgehogs' lawn
+# is, its holes filled (a walk round a hole reads as a drawing bug), and the
+# squares outside it are lawn the walk never takes. The proof's masks are 64
+# bits, so a box is never past 8 x 8.
+
+const Planes = preload("res://puzzles/planes_state.gd")
+const HHGen = preload("res://puzzles/hedgehogs_gen.gd")
+const QLGen = preload("res://puzzles/quilt_gen.gd")
+
+## The night's sides each band tries, in order: the small pictures first (a
+## 24 or a 32 brought down to eight squares loses the thing), the band's
+## neighbour's next, so the bands mostly lay different things. Two at most:
+## a cut that is not proved costs about a plain deal, and Hard's third try
+## took a day to 514 ms here. Insane stays on the plain 8 x 8: a cut of ~50
+## squares read half as hard (the careful guesser wasted 39 squares against
+## the plain garden's 84 over the 24 cached nights), and Insane is the hard
+## board on purpose.
+const THEMED_SIZES := [[10, 12], [12, 10], [12, 24]]
+## The boxes a band's cut is tried in, biggest first.
+const THEME_BOXES := [[6, 5], [7, 6], [8, 7]]
+## A cut is kept when it has at least SHAPE_MIN of the band's own squares (a
+## smaller garden is a shorter day), at most THEME_CELLS, and at most
+## SHAPE_MAX of its own bounding box (or it is the square with a corner off).
+const SHAPE_MIN := 0.75
+const SHAPE_MAX := 0.92
+const THEME_CELLS := [30, 40, 52]
+
+## `pic_rows` (a night picture's rows) cut for band `d`: {cols, rows, mask
+## (bit c = the square y * cols + x is garden), beads (Vector2i -> bead
+## name), cells}, or {} when no box keeps the rules.
+static func shape_fit(pic_rows: Array, d: int) -> Dictionary:
+	var bi := clampi(d, 0, THEME_BOXES.size() - 1)
+	var bd := band(bi)
+	var n0 := int(bd.cols) * int(bd.rows)
+	for m: int in THEME_BOXES[bi]:
+		var box := Vector2i(m, m)
+		var cut := Planes.cut_shape(pic_rows, box, false)
+		if cut.is_empty():
+			continue
+		var off := Vector2i((m - int(cut.cols)) / 2, (m - int(cut.rows)) / 2)
+		var on := {}
+		for c: Vector2i in cut.cells:
+			on[c + off] = cut.cells[c]
+		on = HHGen._smooth(on, box)
+		if on.is_empty():
+			continue
+		QLGen._fill_holes(on, m)
+		var lo := Vector2i(m, m)
+		var hi := Vector2i(-1, -1)
+		for c: Vector2i in on:
+			lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
+			hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
+		var ext := hi - lo + Vector2i.ONE
+		var count := on.size()
+		if float(count) < SHAPE_MIN * float(n0) or count > int(THEME_CELLS[bi]):
+			continue
+		if float(count) > SHAPE_MAX * float(ext.x * ext.y) or ext.x * ext.y > 64:
+			continue
+		var mask := 0
+		var beads := {}
+		var black := 0
+		for c: Vector2i in on:
+			var q := c - lo
+			mask |= 1 << (q.y * ext.x + q.x)
+			beads[q] = on[c]
+			if (q.x + q.y) % 2 == 0:
+				black += 1
+		if absi(2 * black - count) > 1:
+			continue
+		return {"cols": ext.x, "rows": ext.y, "mask": mask, "beads": beads, "cells": count}
+	return {}

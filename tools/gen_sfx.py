@@ -1202,8 +1202,11 @@ SETS = {
         # lands between 400 and 700 Hz, and no two phrases share a contour.
         # A lift is a lighter thing set down.
         "place":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.16", "notes:0:-1", "tight"),
-        "munch":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.24", "body:320", "tight", "notes:0.08:0,2"),
-        "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled leafy tap, a kind 'not that way', warm, very short", 0.5, -12, CLOVER),
+        # munch, refuse and slip moved to the bank 2026-11-06 (the house
+        # sound: a thing set down is the token, a refusal the tongue, a
+        # thing taken back the lip); munch keeps its two-notch nibble.
+        "munch":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.24", "notes:0.08:0,2", "tight"),
+        "refuse":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -16, FOLEY, "bank:tongue", "cut:0.2", "notes:0.1:-3,-5", "tight"),
         "undo":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -15, FOLEY, "bank:lip", "cut:0.28", "notes:0.11:1,-2", "tight"),
         "hint":     ("one soft note on a kalimba, a gentle little idea, short", 1.0, -10, COZY_TUNE, "warm:2000", "steep", "ease:0.012", "body:300", "notes:0.16:9,12,16", "cut:0.9"),
         "reset":    ("a soft gust of warm breeze through a few leaves, one gentle whoosh of air that rises and fades, short", 0.8, -16, BREEZE, "warm:1100", "steep", "ease:0.06", "body:320"),
@@ -1228,7 +1231,10 @@ SETS = {
         "strand":   ("a soft worried 'uh-oh', two kalimba notes with a gentle wobble bending down, warm and muffled, never a buzzer, short", 0.6, -12, CLOVER),
         "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, CLOVER),
         # The caterpillar scooting back a square: undo's take, one notch down.
-        "slip":     ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -16, HUSH, "warm:1300", "cut:0.12", "body:320", "tight", "notes:0:-2"),
+        "slip":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -17, FOLEY, "bank:lip", "cut:0.2", "notes:0:-2", "tight"),
+        # A themed win (the daily theme, 2026-11-06): the walk takes the
+        # day's picture as the butterfly lifts off; the boards' theme cue.
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:10,7,4"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, CLOVER),
         # The party. flutter: the butterflies taking off, a small puff of air.

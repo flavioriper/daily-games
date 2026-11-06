@@ -49,6 +49,13 @@ var difficulty := 0
 var hunger := 0
 ## The masks the judge reads (Gen.context).
 var _ctx := {}
+## The garden's squares (bit c), -1 for the whole box. A themed garden
+## (the daily theme, 2026-11-06) is cut to one of the night's things and
+## the squares outside it are lawn: never walked, never counted.
+var mask := -1
+## {id, name, beads (Vector2i -> bead name)} on a themed garden, else {}.
+## The beads are shown only once solved.
+var theme: Dictionary = {}
 
 ## The walk, tail first. Empty before the first press.
 var body := PackedInt32Array()
@@ -66,9 +73,27 @@ static func hearts_for(band: int) -> int:
 ## Every band deals live. Insane is the plain game on the hardest garden
 ## (since 2026-10-26; it was Peckish, mined into a bank, which nothing reads
 ## now).
-func build(rng: RandomNumberGenerator, band: int, _bank_step := 0) -> void:
+##
+## `pictures` are the night's things this band may take, in
+## Gen.THEMED_SIZES' order ({id, name, rows}); [] deals the square garden,
+## the same draws off `rng` as before the theme. Each thing is tried off
+## `rng.seed ^ hash(id)`, so a failed cut leaves the plain deal untouched.
+func build(rng: RandomNumberGenerator, band: int, _bank_step := 0, pictures: Array = []) -> void:
 	difficulty = band
-	setup(Gen.generate(rng, clampi(band, 0, Gen.BANDS.size() - 1)))
+	var b := clampi(band, 0, Gen.BANDS.size() - 1)
+	for pic: Dictionary in pictures:
+		var shape := Gen.shape_fit(pic.rows, b)
+		if shape.is_empty():
+			continue
+		var tried := RandomNumberGenerator.new()
+		tried.seed = rng.seed ^ hash(String(pic.id))
+		var g := Gen.generate(tried, b, shape)
+		if g.is_empty():
+			continue
+		setup(g)
+		theme = {"id": String(pic.id), "name": String(pic.get("name", "")), "beads": shape.beads}
+		return
+	setup(Gen.generate(rng, b))
 
 ## Lays a generated (or banked) garden out, empty.
 func setup(g: Dictionary) -> void:
@@ -85,7 +110,9 @@ func setup(g: Dictionary) -> void:
 	for k in leaves.size():
 		clue[leaves[k]] = k + 1
 	hunger = int(g.get("hunger", 0))
-	_ctx = Gen.context(cols, rows, leaves, Array(g.hedges), hunger)
+	mask = int(g.get("mask", -1))
+	theme = {}
+	_ctx = Gen.context(cols, rows, leaves, Array(g.hedges), hunger, mask)
 	given = {}
 	reset_board()
 	history.clear()
@@ -112,8 +139,20 @@ func cut_cost(c: int) -> int:
 	var at := body.find(c)
 	return body.size() - 1 - at if at >= 0 else 0
 
+## The garden's squares: the walk's length (the box's on a square garden).
 func size() -> int:
+	return path.size()
+
+## The box the garden is laid in, squares outside the cut included.
+func box() -> int:
 	return cols * rows
+
+func themed() -> bool:
+	return not theme.is_empty()
+
+## Outside the day's shape: lawn, never a square of the walk.
+func is_void(c: int) -> bool:
+	return c < 0 or c >= box() or not (mask & (1 << c))
 
 func last_leaf() -> int:
 	return leaves.size()
@@ -133,7 +172,7 @@ func hedged(a: int, b: int) -> bool:
 	return hedges.has(Gen.edge_key(a, b))
 
 func adjacent(a: int, b: int) -> bool:
-	return absi(a % cols - b % cols) + absi(a / cols - b / cols) == 1
+	return absi(a % cols - b % cols) + absi(a / cols - b / cols) == 1 and not is_void(a) and not is_void(b)
 
 ## How many bare squares the tummy still has room for (Peckish only): its
 ## size less the bare squares walked since the last leaf.
@@ -195,9 +234,7 @@ func stranded(n: int) -> PackedInt32Array:
 func stranded_now() -> PackedInt32Array:
 	if body.is_empty() or hunger > 0:
 		return PackedInt32Array()
-	var free := 0
-	for q in size():
-		free |= 1 << q
+	var free: int = _ctx.full
 	for q in body:
 		free &= ~(1 << q)
 	return _stranded_from(head(), free)
@@ -216,7 +253,7 @@ func _stranded_from(n: int, free: int) -> PackedInt32Array:
 			break
 		reach = grown
 	var g := free | (1 << n)
-	for q in size():
+	for q in box():
 		var qb := 1 << q
 		if not (free & qb):
 			continue
@@ -243,9 +280,7 @@ func _starved(n: int) -> bool:
 
 ## The squares still empty once the head has stepped onto `n`.
 func _free_after(n: int) -> int:
-	var free := 0
-	for q in size():
-		free |= 1 << q
+	var free: int = _ctx.full
 	for q in body:
 		free &= ~(1 << q)
 	return free & ~(1 << n)

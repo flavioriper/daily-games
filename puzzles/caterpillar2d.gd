@@ -71,6 +71,7 @@ const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 const World = preload("res://puzzles/caterpillar_world.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 ## The slide into the win's span (the host's SLOT_TIME) and the air kept
 ## round the bed there.
@@ -197,6 +198,22 @@ const BUTTERFLY_W := 0.75
 const BUTTERFLY_RISE := 1000.0
 const BUTTERFLY_LOOP := 1.1
 const WIN_WAIT := 2.8
+## A themed garden's win (the daily theme, 2026-11-06): as the butterfly
+## unfolds the body fades over SHED_FADE (it has become the butterfly), and
+## the squares it walked take the picture's beads tail to head over
+## PAINT_SPAN, each swelling in over PAINT_TIME: the walk drew the day's
+## thing. The party waits THEME_HOLD so its confetti falls on the picture
+## and its note stays clear of the theme cue.
+const SHED_FADE := 0.45
+const PAINT_SPAN := 0.9
+const PAINT_TIME := 0.3
+const THEME_HOLD := 0.9
+const PAINT_SIDE := 0.86
+const PAINT_RADIUS := 0.2
+const PAINT_PALE := 0.82
+const PAINT_PALE_SHADE := 0.12
+## The lawn left in the bed round a themed garden: a tuft on this share of it.
+const VOID_TUFT := 0.45
 ## A refusal repeated on the same square is not said twice inside this.
 const REFUSE_QUIET := 0.5
 ## A hint's segments arrive this far apart.
@@ -516,6 +533,12 @@ var _bubble_mesh: ArrayMesh
 var _bug_mesh: ArrayMesh
 var _seal_mesh: ArrayMesh
 var _party_at := INF
+## When a themed win's body began to fade and its picture to pour on; INF
+## before (and on a square garden). `_paint` is the picture's mesh, kept once
+## every bead is down.
+var _shed_at := INF
+var _paint: ArrayMesh
+var _paint_done := false
 var _stamp_at := INF
 var _cat: Control
 var _cat_at := INF
@@ -612,6 +635,7 @@ const HAPTICS := {
 	"heart_lost": Haptics.BAD,
 	"out_of_hearts": Haptics.LOSE,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 ## True once the stroke in hand has knocked (the caterpillar set down, a leaf
 ## eaten, a heart): its release then says nothing more.
@@ -679,12 +703,17 @@ func day_dict() -> Dictionary:
 	var walk: Array = []
 	for i in path.size() - 1:
 		walk.append([path[i] % w, path[i] / w, path[i + 1] % w, path[i + 1] / w, 1])
+	var voids: Array = []
+	for c in w * h:
+		if _state.is_void(c):
+			voids.append(c)
 	var doc := {
-		"source": "bank" if _state.hunger > 0 else "generator", "kind": "grid",
+		"source": "bank" if _state.hunger > 0 else ("theme" if _state.themed() else "generator"), "kind": "grid",
+		"theme": String(_state.theme.get("id", "")),
 		"payload": {"cols": w, "rows": h, "leaves": Array(_state.leaves), "hedges": hedges,
-			"hunger": int(_state.hunger)},
+			"hunger": int(_state.hunger), "void": voids},
 		"solution": {"path": Array(path)},
-		"metrics": {"cols": w, "rows": h, "cells": w * h, "leaves": _state.leaves.size(),
+		"metrics": {"cols": w, "rows": h, "cells": _state.size(), "leaves": _state.leaves.size(),
 			"hedges": hedges.size(), "unique": bool(_state.unique), "hunger": int(_state.hunger),
 			"hints": State.hints_for(_state.difficulty), "move_budget": max_moves},
 		"view": {"w": w, "h": h, "puzzle": puzzle, "solution": answer, "marks": marks,
@@ -697,7 +726,12 @@ func day_dict() -> Dictionary:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	_close_card()
-	_state.build(rng, difficulty, bank_step)
+	_state.build(rng, difficulty, bank_step, _night_pictures(difficulty))
+	_dealt_garden(difficulty)
+
+## Everything a garden starts from once the state holds it (build()'s, and a
+## harness's themed deal).
+func _dealt_garden(difficulty: int) -> void:
 	max_hearts = State.hearts_for(difficulty)
 	max_moves = _state.moves_budget()
 	_heart_used = false
@@ -715,6 +749,18 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tip_idx = 0
 	_say(tr(_tips()[0]), Face.Expr.HAPPY)
 	_tip_timer.start()
+
+## The night's things this band may cut its garden to (Gen.THEMED_SIZES):
+## only a daily dealt from its day, never New, and never Insane.
+func _night_pictures(difficulty: int) -> Array:
+	var out: Array = []
+	if bank_step != 0 or daily_key == 0 or difficulty >= Gen.THEMED_SIZES.size():
+		return out
+	for side in Gen.THEMED_SIZES[maxi(difficulty, 0)]:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			out.append(pic)
+	return out
 
 ## The garden as it is dealt, and as Try again deals it back: every heart,
 ## the day's light, an empty bed.
@@ -747,6 +793,9 @@ func _deal() -> void:
 	_munched = {}
 	_anim_until = 0.0
 	_solved_at = -1.0
+	_shed_at = INF
+	_paint = null
+	_paint_done = false
 	_dirty()
 
 # --- layout ---
@@ -806,7 +855,7 @@ func _cell_at(local: Vector2, core := false) -> int:
 	var p := (local - _origin()) / s
 	var x := int(floor(p.x))
 	var y := int(floor(p.y))
-	if x < 0 or y < 0 or x >= _state.cols or y >= _state.rows:
+	if x < 0 or y < 0 or x >= _state.cols or y >= _state.rows or _state.is_void(y * _state.cols + x):
 		return -1
 	if core:
 		var f := p - Vector2(x, y)
@@ -1056,7 +1105,7 @@ func _process(delta: float) -> void:
 	_was_busy = b
 	if _animating(t) or _lag(t) > 0.0:
 		_refresh()
-	elif not Motion.reduce and (not _state.body.is_empty() or not _state.peckish()):
+	elif not Motion.reduce and _shed_at == INF and (not _state.body.is_empty() or not _state.peckish()):
 		# (Before the first press the head is not there to breathe, but
 		# leaf 1 still beckons, `_draw_beckon`.)
 		# At rest only the head moves -- its breath and its blink -- and it is
@@ -1187,16 +1236,27 @@ func _draw() -> void:
 		draw_mesh(_lawn, null, xf, tint)
 		draw_mesh(_bed, null, board, tint)
 		shown.append_array([_lawn, _bed])
-	for m in [_rest_under, _under, _tail_lo, _live_lo, _tail_hi, _live_hi, _live_marks, _live_fx, _rest_over, _over]:
+	for m in [_rest_under, _under]:
 		if m != null:
 			draw_mesh(m, null, board, tint)
 			shown.append(m)
 	_in_ref = true
-	_draw_beckon(t, board, seen, shown)
-	_draw_numbers(t, board, seen)
+	_draw_paint(t, board, seen, shown)
 	_in_ref = false
-	if _top != null:
-		draw_mesh(_top, null, board * _top_xf, tint)
+	var body := _body_level(t)
+	var body_tint := Color(1.0, 1.0, 1.0, seen * body)
+	if body > 0.0:
+		for m in [_tail_lo, _live_lo, _tail_hi, _live_hi, _live_marks, _live_fx, _rest_over, _over]:
+			if m != null:
+				draw_mesh(m, null, board, body_tint)
+				shown.append(m)
+	_in_ref = true
+	_draw_beckon(t, board, seen, shown)
+	if body > 0.0:
+		_draw_numbers(t, board, seen * body)
+	_in_ref = false
+	if _top != null and body > 0.0:
+		draw_mesh(_top, null, board * _top_xf, body_tint)
 		shown.append(_top)
 	_draw_butterfly_mesh(t, shown)
 	_shown = shown
@@ -1303,7 +1363,19 @@ func _build_bed() -> ArrayMesh:
 		b.stroke(PackedVector2Array([lawn + Vector2(lawn_size.x + mid + off, lawn_size.y * 0.14), lawn + Vector2(lawn_size.x + mid + off, lawn_size.y * 0.5)]), 1.5, grain)
 	b.fan(Face.Builder.round_rect(lawn - Vector2.ONE * 3.0, lawn_size + Vector2.ONE * 6.0, FRAME_R - 6.0), Pal.PLAQUE)
 	b.fan(Face.Builder.round_rect(lawn, lawn_size, FRAME_R - 8.0), Pal.MEADOW_LINE)
-	for c in _state.size():
+	for c in _state.box():
+		if not _state.is_void(c):
+			continue
+		# A themed garden: the squares outside the day's thing are lawn in
+		# the bed, low and untiled, so the tiles stand in the thing's shape.
+		var at := o + Vector2(c % _state.cols, c / _state.cols) * s
+		b.fan(Face.Builder.round_rect(at + Vector2.ONE * TILE_GAP, Vector2.ONE * (s - TILE_GAP * 2.0), s * TILE_R),
+			Pal.MEADOW_LINE.lerp(Pal.LEAF_DEEP, 0.24))
+		if Rings._h(seed_i + c, 47) < VOID_TUFT:
+			Scenery.tuft(b, at + Vector2(0.3 + 0.4 * Rings._h(c, 48), 0.78) * s, s * 0.26)
+	for c in _state.box():
+		if _state.is_void(c):
+			continue
 		var x: int = c % _state.cols
 		var y: int = c / _state.cols
 		var at := o + Vector2(x, y) * s + Vector2.ONE * TILE_GAP
@@ -2132,6 +2204,65 @@ func _blink(t: float) -> float:
 	var m := fmod(t + 0.4, 3.8)
 	return 1.0 - 0.9 * sin(PI * m / 0.14) if m < 0.14 else 1.0
 
+## How much of the body is still drawn: all of it until a themed win sheds
+## it, then none once SHED_FADE has run.
+func _body_level(t: float) -> float:
+	if _shed_at == INF:
+		return 1.0
+	if Motion.reduce:
+		return 0.0
+	return 1.0 - clampf((t - _shed_at) / SHED_FADE, 0.0, 1.0)
+
+## How far square `c` has taken its bead (0 to 1): nothing before the shed
+## or on a square garden; then in the walk's own order, tail to head.
+func _paint_level(c: int, t: float) -> float:
+	if _shed_at == INF or not _state.themed() or _state.is_void(c):
+		return 0.0
+	if Motion.reduce:
+		return 1.0
+	var i: int = _state.path.find(c)
+	var n := maxi(_state.size() - 1, 1)
+	return clampf((t - _shed_at - PAINT_SPAN * float(i) / float(n)) / PAINT_TIME, 0.0, 1.0)
+
+## The solved themed garden as its picture: a raised bead a walked square
+## in the thing's own colour, swelling in as the walk's order reaches it.
+## One mesh, kept once every bead is down. Made in the reference layout.
+func _draw_paint(t: float, xf: Transform2D, seen: float, shown: Array) -> void:
+	if _shed_at == INF or not _state.themed():
+		return
+	if _paint == null or not _paint_done:
+		var beads: Dictionary = _state.theme.get("beads", {})
+		var b := Face.Builder.new()
+		var all := true
+		var s := _cell()
+		for c in _state.box():
+			if _state.is_void(c):
+				continue
+			var k := _paint_level(c, t)
+			if k < 1.0:
+				all = false
+			if k <= 0.0:
+				continue
+			var bead = Pal.PG_BEADS.get(String(beads.get(Vector2i(c % _state.cols, c / _state.cols), "")))
+			if bead == null:
+				continue
+			var face: Color = bead
+			if face.get_luminance() > PAINT_PALE:
+				face = face.darkened(PAINT_PALE_SHADE)
+			var e := Motion.back_out(k)
+			var side := Vector2.ONE * s * PAINT_SIDE * lerpf(0.4, 1.0, e)
+			var at := _centre(c) - side * 0.5
+			b.fan(Face.Builder.round_rect(at + Vector2(0.0, s * 0.05), side, s * PAINT_RADIUS), Color(face.darkened(0.3), k))
+			b.fan(Face.Builder.round_rect(at, side, s * PAINT_RADIUS), Color(face, k))
+			b.fan(Face.Builder.round_rect(at + side * Vector2(0.16, 0.1), side * Vector2(0.36, 0.14), s * 0.05),
+				Color(face.lightened(0.45), 0.7 * k))
+		_paint = b.mesh() if not b.verts.is_empty() else null
+		_paint_done = all
+	if _paint == null:
+		return
+	draw_mesh(_paint, null, xf, Color(1.0, 1.0, 1.0, seen))
+	shown.append(_paint)
+
 ## The butterfly the solve ends in: it unfolds out of the head once the hop
 ## has reached it, flies a loop over the garden and leaves over the top of
 ## the card. It is drawn outside the entrance transform and is not clipped,
@@ -2600,12 +2731,16 @@ func _rows_filled(c: int, t: float) -> void:
 		col.append(k * _state.cols + x)
 	for line: PackedInt32Array in [row, col]:
 		var full := true
+		var squares := PackedInt32Array()
 		for q in line:
+			if _state.is_void(q):
+				continue
+			squares.append(q)
 			if not on.has(q):
 				full = false
 				break
-		if full:
-			lines.append(line)
+		if full and squares.size() > 1:
+			lines.append(squares)
 	if lines.is_empty():
 		return
 	fx.cue("row", 1.0, -4.0)
@@ -3192,7 +3327,8 @@ func _start_gag(c: int, gag: int, lands: float) -> void:
 # --- the win and the party ---
 
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": tr("CP_WIN")}
+	var name := String(_state.theme.get("name", ""))
+	return {"faces": [], "subtitle": tr("CP_WIN_THEME") % name if name != "" else tr("CP_WIN")}
 
 func win_delay() -> float:
 	if Motion.reduce:
@@ -3222,6 +3358,11 @@ func _on_solved() -> void:
 		+ BUTTERFLY_LAG + BUTTERFLY_TIME)
 	_say(tr("CP_WIN"), Face.Expr.JOY)
 	fx.cue("solved")
+	if _state.themed():
+		# The body becomes the butterfly and the walk shows what it drew.
+		_shed_at = t if Motion.reduce else _solved_at + Motion.SOLVE_DELAY + SOLVE_SPAN + BUTTERFLY_LAG
+		_after(_shed_at - t, fx.cue.bind("theme"))
+		_busy_for(_shed_at - t + PAINT_SPAN + PAINT_TIME)
 	_heart_layer.queue_redraw()
 	_party()
 	_dirty()
@@ -3234,7 +3375,7 @@ func _on_solved() -> void:
 ## simply there.
 func _party() -> void:
 	var now := _now()
-	var lead := 0.0 if Motion.reduce else SOLVE_SPAN + PARTY_AT
+	var lead := 0.0 if Motion.reduce else SOLVE_SPAN + PARTY_AT + (THEME_HOLD if _state.themed() else 0.0)
 	_party_at = now + lead
 	_after(lead + 0.8, func() -> void:
 		_say(_cheer(), Face.Expr.JOY))
@@ -3287,6 +3428,8 @@ func restore_completed_board() -> void:
 		_seg_at.append(-100.0)
 	_lag0 = 0.0
 	_solved_at = -1.0
+	if _state.themed():
+		_shed_at = t - 100.0
 	_anim_until = 0.0
 	_decor_until = 0.0
 	_opened = t - 100.0
@@ -3309,7 +3452,9 @@ func _cat_px() -> float:
 ## left (the seal takes the right).
 func _cat_spot() -> Vector2:
 	var box := _frame_rect()
-	return Vector2(box.position.x + box.size.x * 0.22, box.end.y - _cat_px() * 0.3)
+	# On a themed garden she curls on the frame, off the day's picture.
+	var low := _cat_px() * (0.0 if _state.themed() else 0.3)
+	return Vector2(box.position.x + box.size.x * 0.22, box.end.y - low)
 
 func _cat_start() -> Vector2:
 	var box := _frame_rect()
