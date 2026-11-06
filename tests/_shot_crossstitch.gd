@@ -8,7 +8,7 @@ extends SceneTree
 ## spends the swaps badly: the sag, the card, three more swaps, then Show
 ## the sampler. `tut` shoots a tutorial page played a while; `card` the
 ## menu card beside Honeycomb's. `theme` hands the deal the fixture's
-## theme words (scratchpad theme_pool_fixture.json, or `pool=<path>`) in
+## theme words (tests/fixtures/theme_pool.json, or `pool=<path>`) in
 ## place of the night's, so the day deals themed: the knot at rest, the
 ## theme word sewn (`theme_sewing`, `theme`), the win and the reopened day
 ## wear it. `lang=<pt|es>` plays it in that language. Puts nothing in the
@@ -30,7 +30,7 @@ var _theme := false
 var _themed_shot := false
 var _won_theme := false
 var _lang := ""
-var _pool := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/34d2447a-148c-4075-8921-873314a4eae3/scratchpad/theme_pool_fixture.json"
+var _pool := "res://tests/fixtures/theme_pool.json"
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():

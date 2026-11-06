@@ -195,6 +195,8 @@ var fx: Node
 ## whether the win carries a theme beat (the theme biscuit made last, or
 ## the word named at the win).
 var _theme := ""
+## The bank entry this board was dealt (a reopened day deals it back).
+var _dealt: Dictionary = {}
 var _theme_b := -1
 var _theme_at := INF
 var _theme_beat := false
@@ -271,16 +273,19 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_theme = ""
 	_theme_b = -1
 	var themed := _themed_tin()
+	_dealt = {}
 	if demo and not demo_day.is_empty():
 		_st.band = _band
 		_st.load_day(demo_day)
 	elif not themed.is_empty():
 		_st.band = _band
 		_st.load_day(themed.day)
+		_dealt = themed.day
 		_theme = String(themed.word)
 		_theme_b = _st.biscuit_of(_theme)
 	else:
 		_st.deal(rng, _band, bank_step)
+		_dealt = InsaneBank.pick(State.BANKS[_band], bank_step)
 	_fresh()
 	_enter_at = _t
 	_cue("enter")
@@ -1256,10 +1261,21 @@ func flat_win() -> Dictionary:
 
 func completion_record() -> Dictionary:
 	return {"points": _st.points, "helped": _st.helped, "stars": _st.stars(),
-		"found": Array(_st.found), "whole": Array(_st.whole), "bulb": _st.by_bulb.keys()}
+		"found": Array(_st.found), "whole": Array(_st.whole), "bulb": _st.by_bulb.keys(),
+		"entry": _dealt, "theme": _theme}
 
 ## A finished day reopens whole, its words and biscuits kept.
 func restore_completed_board() -> void:
+	# a day played before the night's words reached this phone (or after)
+	# reopens on the entry it was played on, not on today's deal
+	var was = completed_record.get("entry")
+	if was is Dictionary and not (was as Dictionary).is_empty() and was != _dealt:
+		_st.band = _band
+		_st.load_day(was)
+		_dealt = was
+		_theme = String(completed_record.get("theme", ""))
+		_theme_b = _st.biscuit_of(_theme) if _theme != "" else -1
+		_fresh()
 	var order: Array = completed_record.get("whole", [])
 	_st.whole.clear()
 	for b in order:

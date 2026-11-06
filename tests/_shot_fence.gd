@@ -30,7 +30,7 @@ var _diag: Control
 var _at := 90
 var _theme := ""
 var _lang := ""
-const FIXTURE := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/34d2447a-148c-4075-8921-873314a4eae3/scratchpad/theme_pool_fixture.json"
+const FIXTURE := "res://tests/fixtures/theme_pool.json"
 const Board = preload("res://puzzles/fence2d.gd")
 const State = preload("res://puzzles/fence_state.gd")
 const ThemedPictures = preload("res://core/themed_pictures.gd")

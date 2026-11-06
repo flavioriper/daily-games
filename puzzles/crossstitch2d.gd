@@ -1197,10 +1197,19 @@ func flat_win() -> Dictionary:
 	return {"faces": [], "subtitle": line}
 
 func completion_record() -> Dictionary:
-	return {"used": _st.used, "helped": _st.helped, "stars": 0 if _shown else _st.stars(), "shown": _shown}
+	return {"used": _st.used, "helped": _st.helped, "stars": 0 if _shown else _st.stars(), "shown": _shown,
+		"entry": _st.dealt, "theme_slot": _st.theme_slot, "theme_word": _st.theme_word}
 
 ## A finished day reopens stitched, its count kept.
 func restore_completed_board() -> void:
+	# a day played before the night's words reached this phone (or after)
+	# reopens on the entry it was played on, not on today's deal
+	var was = completed_record.get("entry")
+	if was is Dictionary and not (was as Dictionary).is_empty() and was != _st.dealt:
+		_st.band = _band
+		_st.load_day(was)
+		_st.theme_slot = int(completed_record.get("theme_slot", -1))
+		_st.theme_word = String(completed_record.get("theme_word", ""))
 	_st.finish()
 	_st.used = int(completed_record.get("used", _st.fewest))
 	_st.helped = int(completed_record.get("helped", 0))

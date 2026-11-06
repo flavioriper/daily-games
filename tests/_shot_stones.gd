@@ -31,7 +31,7 @@ var _lang := ""
 var _pre := ""
 var _stone_at := 0
 var _toasted := 0
-const FIXTURE := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/34d2447a-148c-4075-8921-873314a4eae3/scratchpad/theme_pool_fixture.json"
+const FIXTURE := "res://tests/fixtures/theme_pool.json"
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():

@@ -128,6 +128,8 @@ static var theme_pool_override: Array = []
 ## The day's word as the bank folds it ("" on a plain lock), when it was
 ## written on the tag, and the tag's last kick.
 var _theme := ""
+## The bank entry this board was dealt (a reopened day deals it back).
+var _dealt: Dictionary = {}
 var _theme_at := -INF
 var _kick_at := -INF
 var _kick := 0.0
@@ -268,6 +270,7 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 		_st.load_day(demo_day)
 	elif not _deal_themed():
 		_st.deal(rng, _band, bank_step)
+		_dealt = InsaneBank.pick(State.BANKS[_band], bank_step)
 	_fresh()
 	_enter_at = _t
 	_cue("enter")
@@ -295,6 +298,7 @@ func _deal_themed() -> bool:
 		return false
 	_st.band = _band
 	_st.load_day(boards[int(got.index)])
+	_dealt = boards[int(got.index)]
 	var w := String(got.word)
 	if _st.knows(w):
 		_theme = w
@@ -1183,10 +1187,19 @@ func flat_win() -> Dictionary:
 	return {"faces": [], "subtitle": line}
 
 func completion_record() -> Dictionary:
-	return {"counted": _st.counted, "helped": _st.helped, "stars": _st.stars(), "found": Array(_st.found)}
+	return {"counted": _st.counted, "helped": _st.helped, "stars": _st.stars(), "found": Array(_st.found),
+		"entry": _dealt, "theme": _theme}
 
 ## A finished day reopens open, its words kept.
 func restore_completed_board() -> void:
+	# a day played before the night's words reached this phone (or after)
+	# reopens on the entry it was played on, not on today's deal
+	var was = completed_record.get("entry")
+	if was is Dictionary and not (was as Dictionary).is_empty() and was != _dealt:
+		_st.band = _band
+		_st.load_day(was)
+		_dealt = was
+		_theme = String(completed_record.get("theme", ""))
 	_st.finish()
 	_st.counted = int(completed_record.get("counted", _st.par))
 	_st.helped = int(completed_record.get("helped", 0))

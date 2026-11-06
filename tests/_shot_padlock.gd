@@ -14,7 +14,7 @@ extends SceneTree
 ## dialled is the day's, shot as `theme_lit` and `theme_tag`, and the win
 ## and the reopened day show its tag. `themiss`: the same lock opened
 ## without it (pencil on the tag, the softer win line). `lang=pt|es`.
-const THEME_FIXTURE := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/34d2447a-148c-4075-8921-873314a4eae3/scratchpad/theme_pool_fixture.json"
+const THEME_FIXTURE := "res://tests/fixtures/theme_pool.json"
 
 var _menu: Node
 var _host: Node
@@ -31,8 +31,21 @@ var _theme := false
 var _miss := false
 var _lang := ""
 
+## `drop`: the day's theme words are gone when the day is reopened (a phone
+## that played before the night's words came, or after), so the deal comes
+## out plain and the reopen must deal back the entry it was played on.
+var _drop := false
+
+func _reopen() -> void:
+	if _drop:
+		load("res://puzzles/padlock2d.gd").theme_pool_override = []
+	_menu._open_at(load("res://ui/registry.gd").find("padlock"), _band)
+
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
+		if a == "drop":
+			_drop = true
+			continue
 		if a.begins_with("d="):
 			_band = int(a.substr(2))
 		elif a.begins_with("tut"):
@@ -119,7 +132,7 @@ func _process(_delta: float) -> bool:
 		return false
 	if _step == 7:
 		if _f == 7005:
-			_menu._open_at(load("res://ui/registry.gd").find("padlock"), _band)
+			_reopen()
 			_host = _menu.get_child(_menu.get_child_count() - 1)
 		if _f == 7200:
 			_b = _host._puzzle
@@ -259,7 +272,7 @@ func _process(_delta: float) -> bool:
 				_f = 7000
 		7:
 			if _f == 7005:
-				_menu._open_at(load("res://ui/registry.gd").find("padlock"), _band)
+				_reopen()
 				_host = _menu.get_child(_menu.get_child_count() - 1)
 			if _f == 7200:
 				_b = _host._puzzle

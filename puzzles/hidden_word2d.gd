@@ -3004,7 +3004,7 @@ func completion_record() -> Dictionary:
 	var out: Array = []
 	for word in state.rows:
 		out.append(String(word))
-	return {"guesses": out}
+	return {"guesses": out, "word": state.written, "theme": _themed_word}
 
 ## A reopened daily that was already solved: the rows go back down already
 ## committed and turned, in their marks' colours, the keyboard painted from
@@ -3013,6 +3013,14 @@ func completion_record() -> Dictionary:
 ## the answer alone stands on row one. Never check_solved(): the day was
 ## solved once and `solved` must not fire a second time.
 func restore_completed_board() -> void:
+	# a day played before the night's words reached this phone (or after)
+	# reopens on the entry it was played on, not on today's deal
+	var was := String(completed_record.get("word", ""))
+	if was != "" and was != state.written:
+		state.written = was
+		state.answer = Locale.fold(was)
+		State._accept[state.answer] = true
+		_themed_word = String(completed_record.get("theme", ""))
 	var guesses: Array[String] = _recorded_guesses()
 	state.rows.clear()
 	state.marks.clear()

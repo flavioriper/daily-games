@@ -66,6 +66,8 @@ var _memo := {}
 ## sampler was dealt for the day's theme (`deal` with a pool); -1 and "".
 var theme_slot := -1
 var theme_word := ""
+## The bank entry last loaded (a reopened day deals it back).
+var dealt: Dictionary = {}
 
 ## Deals the band's sampler for the day. `pool` (ThemedPictures.theme_pool,
 ## folded, strongest first) and `date_key`: a themed daily deals the banked
@@ -118,6 +120,7 @@ func theme_done() -> bool:
 	return theme_slot >= 0 and done_words[theme_slot]
 
 func load_day(day: Dictionary) -> void:
+	dealt = day
 	theme_slot = -1
 	theme_word = ""
 	words.clear()

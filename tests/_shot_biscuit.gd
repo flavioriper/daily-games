@@ -9,7 +9,7 @@ extends SceneTree
 ## in the player's save.
 ##
 ## `theme` (2026-11-06): the board's seam (`pool_for_shots`) is handed the
-## fixture pool in the scratchpad's theme_pool_fixture.json (the player's
+## fixture pool in tests/fixtures/theme_pool.json (the player's
 ## language, folded) before the deal, so the tin is the themed one; after
 ## the rest shot the theme word is made by the pointer (`theme_flying`,
 ## `theme_found`, `theme_tag`, `theme_settled`), then the rest is solved
@@ -31,10 +31,23 @@ var _diag: Control
 var _at := 90
 var _theme := ""
 var _lang := ""
-const FIXTURE := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/34d2447a-148c-4075-8921-873314a4eae3/scratchpad/theme_pool_fixture.json"
+const FIXTURE := "res://tests/fixtures/theme_pool.json"
+
+## `drop`: the day's theme words are gone when the day is reopened (a phone
+## that played before the night's words came, or after), so the deal comes
+## out plain and the reopen must deal back the entry it was played on.
+var _drop := false
+
+func _reopen() -> void:
+	if _drop:
+		load("res://puzzles/biscuit2d.gd").pool_for_shots = []
+	_menu._open_at(load("res://ui/registry.gd").find("biscuit"), _band)
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
+		if a == "drop":
+			_drop = true
+			continue
 		if a.begins_with("d="):
 			_band = int(a.substr(2))
 		elif a.begins_with("tut"):
@@ -153,7 +166,7 @@ func _process(_delta: float) -> bool:
 		return false
 	if _step == 7:
 		if _f == 7005:
-			_menu._open_at(load("res://ui/registry.gd").find("biscuit"), _band)
+			_reopen()
 			_host = _menu.get_child(_menu.get_child_count() - 1)
 		if _f == 7200:
 			_b = _host._puzzle
@@ -268,7 +281,7 @@ func _process(_delta: float) -> bool:
 				_f = 7000
 		7:
 			if _f == 7005:
-				_menu._open_at(load("res://ui/registry.gd").find("biscuit"), _band)
+				_reopen()
 				_host = _menu.get_child(_menu.get_child_count() - 1)
 			if _f == 7200:
 				_b = _host._puzzle
