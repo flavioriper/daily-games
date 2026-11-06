@@ -310,6 +310,7 @@ BR_CHECK_ONE,1 run is in the way.,1 ponte está atrapalhando.,1 puente está est
 BR_CHECK_N,%d runs are in the way.,%d pontes estão atrapalhando.,%d puentes están estorbando.
 BR_CHECK_OK,Nothing you have laid is wrong.,Nada do que você colocou está errado.,Nada de lo que pusiste está mal.
 BR_WIN,"One network, every islet on it.","Uma rede só, com todas as ilhotas.","Una sola red, con todos los islotes."
+BR_WIN_THEME,Today's lagoon: %s.,Lagoa de hoje: %s.,La laguna de hoy: %s.
 BR_SHARE,🌉 %dx%d · %d islets · %d planks,🌉 %dx%d · %d ilhotas · %d tábuas,🌉 %dx%d · %d islotes · %d tablas
 QL_TIP_DRAG,Drag a patch from the rack up onto the quilt.,Arraste um retalho da prateleira para cima da colcha.,Arrastra un retazo del estante hasta la colcha.
 QL_TIP_ALL,Cover every square of the quilt. Every patch fits somewhere.,Cubra todos os quadradinhos da colcha. Todo retalho cabe em algum lugar.,Cubre todos los cuadritos de la colcha. Todo retazo cabe en algún lugar.

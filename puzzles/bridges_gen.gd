@@ -40,6 +40,7 @@ const ATTEMPTS := 200
 const GROW_GUARD := 4000
 ## Propagation settles in a handful of rounds; the cap only stops a pathology.
 const PROP_ROUNDS := 200
+const Planes = preload("res://puzzles/planes_state.gd")
 const DIRS := [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 ## A lane is walked in the positive directions only, so a facing pair is
 ## listed once whichever end it is read from.
@@ -120,7 +121,11 @@ static func _grow(rng: RandomNumberGenerator, b: Dictionary) -> Dictionary:
 	var runs: Array[Dictionary] = []
 	var at := {}
 	var cover := {}
+	var mask: Dictionary = b.get("mask", {})
 	var first := Vector2i(rng.randi_range(1, n - 2), rng.randi_range(1, n - 2))
+	if not mask.is_empty():
+		var inside: Array = mask.keys()
+		first = inside[rng.randi_range(0, inside.size() - 1)]
 	at[first] = 0
 	islets.append(first)
 	deg.append(0)
@@ -137,6 +142,8 @@ static func _grow(rng: RandomNumberGenerator, b: Dictionary) -> Dictionary:
 			continue
 		if at.has(tgt) or cover.has(tgt):
 			continue
+		if not mask.is_empty() and not mask.has(tgt):
+			continue
 		var touching := false
 		for nd in DIRS:
 			if at.has(tgt + nd):
@@ -148,7 +155,7 @@ static func _grow(rng: RandomNumberGenerator, b: Dictionary) -> Dictionary:
 		var ok := true
 		for s in range(1, d):
 			var c: Vector2i = src + dir * s
-			if at.has(c) or cover.has(c):
+			if at.has(c) or cover.has(c) or (not mask.is_empty() and not mask.has(c)):
 				ok = false
 				break
 			cells.append(c)
@@ -210,8 +217,9 @@ static func _close_loops(rng: RandomNumberGenerator, g: Dictionary, b: Dictionar
 		if want <= 0:
 			break
 		var blocked := false
+		var mask: Dictionary = b.get("mask", {})
 		for c in f.cells:
-			if cover.has(c):
+			if cover.has(c) or (not mask.is_empty() and not mask.has(c)):
 				blocked = true
 				break
 		if blocked:
@@ -267,16 +275,44 @@ static func _centre_and_reach(islets: Array, n: int) -> bool:
 ## per-attempt failure rate out to 200 in a row lands somewhere around 1e-15,
 ## so the last resort is robustness and not a live path -- but the flag has to
 ## be honest whether or not the path is ever walked.
-static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
-	var b := band(difficulty)
+##
+## `shape` (shape_fit's, the day's thing) grows the network inside its
+## lattice mask instead: every islet and every cell an answer's run crosses
+## stands in the thing, the islets scaled to its share of the lattice, and
+## nothing is slid (the shape is already centred). Lanes that cross the
+## water outside are lanes as ever -- the rules do not change -- but the
+## answer never takes one. A shape that never deals a proved, guess-free
+## board returns {}, and the board deals the square sea.
+static func generate(rng: RandomNumberGenerator, difficulty: int, shape: Dictionary = {}) -> Dictionary:
+	if not shape.is_empty():
+		# A shaped grow wedges more often in a thin thing: SHAPE_ATTEMPTS at
+		# its count, then one islet fewer, SHAPE_STEPS times, before the
+		# square sea takes the day.
+		for step in SHAPE_STEPS + 1:
+			var bs := band(difficulty).duplicate()
+			bs["mask"] = shape.mask
+			bs["islets"] = int(shape.islets) - step
+			var got := _generate(rng, bs, SHAPE_ATTEMPTS, true)
+			if not got.is_empty():
+				return got
+		return {}
+	return _generate(rng, band(difficulty), ATTEMPTS, false)
+
+const SHAPE_ATTEMPTS := 30
+const SHAPE_STEPS := 2
+
+static func _generate(rng: RandomNumberGenerator, b: Dictionary, attempts: int, shaped: bool) -> Dictionary:
 	var last := {}
 	var unique := {}
-	for attempt in range(1, ATTEMPTS + 1):
+	for attempt in range(1, attempts + 1):
 		var g := _grow(rng, b)
 		if g.is_empty():
 			continue
 		_close_loops(rng, g, b)
-		if not _centre_and_reach(g.islets, b.n):
+		if not shaped:
+			if not _centre_and_reach(g.islets, b.n):
+				continue
+		elif not _reach_shape(g.islets, b.mask):
 			continue
 		var islets: Array = g.islets
 		var lanes := lanes_for(b.n, islets)
@@ -316,7 +352,98 @@ static func generate(rng: RandomNumberGenerator, difficulty: int) -> Dictionary:
 		if b.guess_free and not board.guess_free:
 			continue
 		return board
+	if shaped:
+		# A themed sea is dealt proved or not at all: the square sea is the
+		# fallback, never a shape that skipped the band's own promise.
+		return {}
 	return unique if not unique.is_empty() else last
+
+# ------------------------------------------------------------- the day's thing
+
+## The night's picture sides each band tries, in order (core/themed_pictures.gd):
+## the bands mostly lay different things. Insane (Lantern Night) is banked and
+## stays the square sea.
+const THEMED_SIZES := [[12, 24, 10], [24, 12, 32], [32, 24, 12]]
+## The picture is cut FINE squares a lattice cell a side, so the lagoon and
+## the win's beads read as the thing (7 cells a side would not); a lattice
+## cell is in the mask when MASK_HIT of its FINE*FINE squares are.
+const FINE := 2
+const MASK_HIT := 3
+## The mask's share of the lattice it is kept at, and the islets it stands
+## (the band's count times its share times ISLET_LEAN, never under the floor).
+const SHAPE_MIN := 0.42
+const SHAPE_MAX := 0.86
+const ISLET_LEAN := [1.4, 1.4, 1.4]
+const ISLET_FLOOR := [9, 13, 17]
+
+## A picture's rows cut to band `d`'s lattice: {"mask": Vector2i -> true, the
+## lattice cells in the thing (its largest piece), "beads": Vector2i -> bead,
+## the picture at FINE squares a cell, "fine": its side, "islets": the count
+## to grow}, or {} when the thing is too thin or too blocky for the band.
+static func shape_fit(pic_rows: Array, d: int) -> Dictionary:
+	if d < 0 or d >= THEMED_SIZES.size():
+		return {}
+	var n: int = int(band(d).n)
+	var side := n * FINE
+	var cut := Planes.cut_shape(pic_rows, Vector2i(side, side), false)
+	if cut.is_empty():
+		return {}
+	var off := Vector2i((side - int(cut.cols)) / 2, (side - int(cut.rows)) / 2)
+	var beads := {}
+	for c: Vector2i in cut.cells:
+		beads[c + off] = cut.cells[c]
+	var on := {}
+	for y in n:
+		for x in n:
+			var hit := 0
+			for k in FINE * FINE:
+				if beads.has(Vector2i(x * FINE + k % FINE, y * FINE + k / FINE)):
+					hit += 1
+			if hit >= MASK_HIT:
+				on[Vector2i(x, y)] = true
+	var mask := _largest(on)
+	var share := float(mask.size()) / float(n * n)
+	if share < SHAPE_MIN or share > SHAPE_MAX:
+		return {}
+	var count := maxi(int(ISLET_FLOOR[d]), roundi(float(band(d).islets) * minf(1.0, share * float(ISLET_LEAN[d]))))
+	return {"mask": mask, "beads": beads, "fine": side, "islets": count}
+
+## The biggest 4-connected piece of `on`.
+static func _largest(on: Dictionary) -> Dictionary:
+	var best := {}
+	var seen := {}
+	for c: Vector2i in on:
+		if seen.has(c):
+			continue
+		var piece := {c: true}
+		seen[c] = true
+		var stack: Array = [c]
+		while not stack.is_empty():
+			var p: Vector2i = stack.pop_back()
+			for dv: Vector2i in DIRS:
+				var q: Vector2i = p + dv
+				if on.has(q) and not seen.has(q):
+					seen[q] = true
+					piece[q] = true
+					stack.append(q)
+		if piece.size() > best.size():
+			best = piece
+	return best
+
+## A shaped network's reach: its islets span the mask's own extent to within
+## a row and a column, so the thing is stood in end to end.
+static func _reach_shape(islets: Array, mask: Dictionary) -> bool:
+	var lo := Vector2i(1 << 20, 1 << 20)
+	var hi := Vector2i(-1, -1)
+	for q: Vector2i in islets:
+		lo = Vector2i(mini(lo.x, q.x), mini(lo.y, q.y))
+		hi = Vector2i(maxi(hi.x, q.x), maxi(hi.y, q.y))
+	var mlo := Vector2i(1 << 20, 1 << 20)
+	var mhi := Vector2i(-1, -1)
+	for q: Vector2i in mask:
+		mlo = Vector2i(mini(mlo.x, q.x), mini(mlo.y, q.y))
+		mhi = Vector2i(maxi(mhi.x, q.x), maxi(mhi.y, q.y))
+	return hi.x - lo.x >= mhi.x - mlo.x - 1 and hi.y - lo.y >= mhi.y - mlo.y - 1
 
 # ----------------------------------------------------------------- the proof
 

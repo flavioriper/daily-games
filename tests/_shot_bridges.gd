@@ -17,7 +17,7 @@ extends SceneTree
 ## <dir>/br_<mode>_d<level>_<n>.png. Every mode prints the peak draw calls
 ## from 0.5 s on (or its own window).
 
-const SHOT_DIR := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/e34fab47-08f2-4a51-8e47-4a951880fbbf/scratchpad"
+const SHOT_DIR := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/93463a9b-1e0d-46c4-bbd1-9e38483f274f/scratchpad"
 
 var _t := 0.0
 var _level := 0
@@ -75,6 +75,8 @@ func _process(delta: float) -> bool:
 		_menu._open_at(entry, _level)
 		_host = _menu.get_child(_menu.get_child_count() - 1)
 		_puzzle = _host._puzzle
+		if _mode.begins_with("theme"):
+			_redeal_themed()
 		if _host.has_node("HowToPlay"):
 			_host.get_node("HowToPlay").free()
 		_script()
@@ -115,6 +117,36 @@ func _shot(tag := "") -> void:
 	var path := "%s/br_%s_d%d_%d%s.png" % [_dir, _mode, _level, _n, tag]
 	root.get_texture().get_image().save_png(path)
 	print("saved ", path)
+
+## The board dealt again in the newest cached night's things, as a themed
+## daily deals it (the harness's backend never starts).
+func _redeal_themed() -> void:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var pick := String(files[-1])
+	for a in OS.get_cmdline_user_args():
+		if a.begins_with("night="):
+			pick = "pictures-%s-content.json" % a.substr(6)
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + pick))
+	var pics: Array = []
+	var gen = load("res://puzzles/bridges_gen.gd")
+	for side in gen.THEMED_SIZES[mini(_level, gen.THEMED_SIZES.size() - 1)]:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			var nm = p.get("name")
+			pics.append({"id": "themed_" + String(p.id), "rows": p.rows,
+				"name": String(nm.get("en", p.id)) if nm is Dictionary else String(p.id)})
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261106 + _level
+	_puzzle.state = load("res://puzzles/bridges_state.gd").new()
+	_puzzle.state.build(rng, _level, 0, pics)
+	_puzzle.max_moves = _puzzle.state.moves_budget()
+	_puzzle._begin()
+	print("theme: ", pick, " -> ", _puzzle.state.theme.get("name", "(plain)"))
 
 # --- the hand ---
 
@@ -244,6 +276,26 @@ func _script() -> void:
 				print("after try again: hearts %d out %s ruled %d hints %d runs %d" % [_puzzle.hearts, _puzzle.out_of_hearts, st.ruled.size(), _puzzle.hints_left(), st.runs.size()]))
 			_at(11.0, _shot)
 			_end = 11.2
+		"theme", "theme_restore":
+			# the newest cached night's thing (night=YYYYMMDD for another): at
+			# rest, every plank, the wave and the picture pouring on; or the
+			# solved day reopened.
+			_at(1.2, _shot.bind("_rest"))
+			if _mode == "theme_restore":
+				_at(1.4, func() -> void: _puzzle.restore_completed_board())
+				_at(2.0, _shot.bind("_restored"))
+				_end = 2.2
+			else:
+				for k in plan.size():
+					_at(1.4 + k * 0.12, _lay.bind(plan[k]))
+				var done: float = 1.4 + plan.size() * 0.12
+				_at(done + 0.05, func() -> void:
+					print("solved %s, themed %s, win_delay %.2f, subtitle: %s" % [_puzzle.is_done(),
+						_puzzle.state.themed(), _puzzle.win_delay(), _puzzle.flat_win().subtitle]))
+				for dt in [0.4, 0.9, 1.3, 1.8, 2.6, 3.4, 4.6]:
+					_at(done + dt, _shot.bind("_%02d" % int(dt * 10)))
+				_ms_from = done
+				_end = done + 4.8
 		"solve":
 			for k in plan.size():
 				_at(1.0 + k * 0.12, _lay.bind(plan[k]))

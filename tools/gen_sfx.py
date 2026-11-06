@@ -995,6 +995,10 @@ SETS = {
         # that rise and settle.
         "lanterns": ("a long soft gust of warm breeze through a few leaves, one slow gentle whoosh of air that rises and fades", 1.6, -16, BREEZE, "warm:1100", "steep", "ease:0.12", "body:320"),
         "lanterns_glow": ("one slow soft note on a kalimba, calm and kind, left to fade", 1.6, -11, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.35:4,13,9"),
+        # 2026-11-06: a themed sea's lagoon takes its picture's colours behind
+        # the solve's wave (the daily theme): the family's theme cue, the
+        # bank's wraps climbing as the colour pours.
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
     },
     # Quilt: cloth patches dragged off a rack onto a backing; a patch that
     # lands sews a running stitch along its seams. The first set was

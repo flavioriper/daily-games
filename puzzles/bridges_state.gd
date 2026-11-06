@@ -76,9 +76,34 @@ var ruled: Dictionary = {}
 ## Vector2i -> true for every islet, so a walk can ask what it met.
 var _seat: Dictionary = {}
 
-func build(rng: RandomNumberGenerator, difficulty: int, bank_step := 0) -> void:
+## The day's thing this sea is cut to (daily theme, 2026-11-06): {} on the
+## square sea, else {"id", "name", "mask": lattice cells in the thing,
+## "beads": the picture at Gen.FINE squares a cell, "fine": its side}.
+var theme: Dictionary = {}
+
+func themed() -> bool:
+	return not theme.is_empty()
+
+## `pictures` (the night's things in Gen.THEMED_SIZES' order, {id, name,
+## rows}) grow the network inside the first thing that deals a proved board,
+## each on its own rng; none, or none that deals, leaves `rng` untouched for
+## the square sea, so a day without a theme deals exactly as before.
+func build(rng: RandomNumberGenerator, difficulty: int, bank_step := 0, pictures: Array = []) -> void:
 	band = clampi(difficulty, 0, Gen.BANDS.size() - 1)
+	theme = {}
 	var g: Dictionary = {}
+	if band < Gen.THEMED_SIZES.size():
+		for pic: Dictionary in pictures:
+			var shape := Gen.shape_fit(pic.get("rows", []), band)
+			if shape.is_empty():
+				continue
+			var own := RandomNumberGenerator.new()
+			own.seed = rng.seed ^ hash(String(pic.get("id", "")))
+			g = Gen.generate(own, band, shape)
+			if not g.is_empty():
+				theme = {"id": String(pic.get("id", "")), "name": String(pic.get("name", "")),
+					"mask": shape.mask, "beads": shape.beads, "fine": int(shape.fine)}
+				break
 	if band == 3:
 		# Lantern Night is dealt from the bank: a live deal cannot grade what
 		# a banked board asks of a player in time on a phone. An empty bank or

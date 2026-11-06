@@ -9,8 +9,26 @@ extends SceneTree
 ## after; and how many lanes an islet faces.
 const State = preload("res://puzzles/bridges_state.gd")
 
+const CACHE := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+
+## `-- theme`: every day grown in a cached night's things (daily theme,
+## 2026-11-06), the nights taken in turn; the square sea otherwise.
+func _nights() -> Array:
+	var out: Array = []
+	if not OS.get_cmdline_user_args().has("theme"):
+		return out
+	var files := DirAccess.get_files_at(CACHE)
+	files.sort()
+	for f in files:
+		if f.begins_with("pictures-2026") and f.ends_with("-content.json"):
+			var doc = JSON.parse_string(FileAccess.get_file_as_string(CACHE + "/" + f))
+			if doc is Dictionary and doc.get("sizes") is Dictionary:
+				out.append(doc.sizes)
+	return out
+
 func _initialize() -> void:
 	var days := 60
+	var nights := _nights()
 	for band in 3:
 		var stalled := 0
 		var closed_games := 0
@@ -25,7 +43,13 @@ func _initialize() -> void:
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 4242 + s * 97 + band
 			var st = State.new()
-			st.build(rng, band)
+			var pics: Array = []
+			if not nights.is_empty():
+				var sizes: Dictionary = nights[s % nights.size()]
+				for side in State.Gen.THEMED_SIZES[band]:
+					if sizes.has(str(side)):
+						pics.append({"id": sizes[str(side)].id, "name": sizes[str(side)].id, "rows": sizes[str(side)].rows})
+			st.build(rng, band, 0, pics)
 			for cell in st.islets:
 				islets += 1
 				for key in st.lanes:

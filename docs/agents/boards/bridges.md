@@ -267,3 +267,65 @@ funnier to play, right now nobody likes it", autonomous, pushed when done.
   Insane; the pulse and WARN on a fresh halo; no streak while one stands;
   the ways-out wash on every band. Not on a phone; the `split` cue on a
   halo not heard.
+
+### The day's thing (2026-11-06)
+
+Daily theme roadmap (`docs/superpowers/specs/2026-10-13-daily-theme-design.md`,
+memory `daily-theme-roadmap`), wave 2's C row, built unattended on the
+user's "integrate the daily theme into all games, get the next on the list
+... do everything autonomous". The roadmap had Bridges graded C and set
+aside for the user's word ("the player would barely see it"); that word is
+taken from "everything autonomous", and the acceptance test was the C
+objection itself: if the thing does not show in play, drop it. It shows
+(the lagoon below). Free: the phone reads the night's `pictures` doc, no
+server change. No Hashi app found builds a picture from its islets
+(Conceptis, Fischer Dynamics, Sebmos are plain grids), so the reference is
+the same as Hedgehogs': boards that end on a pixel picture in colour.
+
+- **The network grows inside one of the night's things** on Easy, Medium
+  and Hard (`Gen.THEMED_SIZES`: the 12, 24 and 32 first, so the bands mostly
+  lay different things). **Lantern Night stays the square sea** (banked).
+  `Gen.shape_fit` cuts the picture to `n * Gen.FINE` squares a side (14, 18,
+  22): a lattice cell is in the mask when 3 of its 2x2 are, and the mask is
+  its largest piece, kept at 0.42 to 0.86 of the lattice. The islets are the
+  band's times the share times 1.4 (`ISLET_LEAN`), never under 9/13/17
+  (`ISLET_FLOOR`).
+- **Only the answer stays inside**: `_grow` stands every islet and every
+  cell a run crosses in the mask, `_close_loops` too; lanes across the
+  water outside are lanes as ever, so the rules and the proof are
+  untouched. No centring (the cut is centred); `_reach_shape` asks the
+  islets to span the mask's extent to within a row and a column.
+- **Dealt proved or not at all**: `SHAPE_ATTEMPTS` (30) at the count, then
+  one islet fewer, twice; `{}` after, and the next thing, then the square
+  sea off the untouched `rng`, so a day without a theme deals as before.
+  Each thing on its own rng (`rng.seed ^ hash(id)`).
+- **Measured** (`tests/_probe_br_theme.gd`, 24 cached nights 20261013-07):
+  **24/24 themed on every band**, 8 to 24 islets, slowest deal 121/142/143
+  ms against the 194 gate (square 4/4/8). `tests/_probe_br_fun.gd -- theme`
+  against the square sea: planks a game 12.2/18.5/25.9 (15.3/23.8/36.2); a
+  guesser who heeds the rose halo stalls 4/15/31 of 60 (10/15/39). **Themed
+  Easy and Hard read a bit easier, Medium the same** (decided for the
+  user, as Light Up's and Hosepipes'). Hard at a 1.7 lean was tried: 474 ms
+  a deal, 22/24 nights, the guesser 30/60; dropped.
+- **In play the thing is a lagoon**: `_lagoon` lays a square of SURFACE at
+  `LAGOON_ALPHA` (0.2) for every one of the picture's FINE squares in the
+  open sea, under the shallows. **Unfeathered**: the builder's feather on
+  each square drew the grid back in as pale seams, and a soft rim of
+  squares drew a striped fringe, so neither is there. No name shown; the
+  shape is the guess.
+- **The pour rides the wave** (`_paint_level`, off `_arrived`, the board's
+  one clock): each FINE square takes its bead (`Pal.PG_BEADS`, pale ones
+  shaded) `PAINT_AT` after the front reaches its nearest islet, `PAINT_STEP`
+  more a cell away, over `PAINT_TIME`, over the planks and under the
+  islets; once the last is down the islets and numbers ease to
+  `ISLET_PAINTED` (0.5) over `ISLET_FADE`, so the picture reads through the
+  network. One mesh in the reference layout's space (`_draw_paint`), rebuilt
+  while it pours, then kept; the win card's half-size board reuses it. The
+  `theme` cue (GOOD) rings as it starts; `win_delay` waits for the pour, the
+  fade and `THEME_HOLD` (1.0); the card says `BR_WIN_THEME` ("Today's
+  lagoon: %s."); a reopened solved day and reduce motion show it whole.
+  `day_dict`: `"source": "theme"`, the thing's id, `payload.lagoon`.
+- `opengl3_angle`, 810x1440, `_shot_bridges.gd -- theme` (new mode, with
+  `theme_restore`): 164 draw calls peak on the solve, 95 restored;
+  `test_bridges` 6773/0; `_win.gd -- bridges` PASS. Owed: a phone, the
+  user's ear on the cue, pt/es read by a native.

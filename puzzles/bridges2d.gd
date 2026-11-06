@@ -73,6 +73,30 @@ const OUT_OF_HEARTS := "res://ui/hud/out_of_hearts.gd"
 const MovesPill = preload("res://ui/flat/moves_pill.gd")
 const MovesDiagram = preload("res://ui/hud/moves_tutorial_diagram.gd")
 const SeaWorld = preload("res://puzzles/bridges_world.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
+## The day's thing (daily theme, 2026-11-06): a themed sea is grown inside
+## one of the night's things (State.Gen.shape_fit), and the thing lies in the
+## open water as a pale lagoon (LAGOON_ALPHA of SURFACE, at the picture's
+## own Gen.FINE squares a cell, not the lattice's). On the solve the lagoon
+## takes the picture's beads (core/palette.gd PG_BEADS) behind the wave: a
+## square PAINT_AT after the front reaches its nearest islet, PAINT_STEP more
+## a cell away from it, over PAINT_TIME, a bead PAINT_SIDE of the square,
+## over the planks and under the islets, which then ease to ISLET_PAINTED
+## over ISLET_FADE so the picture reads through them; the card waits
+## THEME_HOLD more. A bead paler than PAINT_PALE is shaded PAINT_PALE_SHADE,
+## or white would vanish on the pale water.
+const LAGOON_ALPHA := 0.2
+const PAINT_AT := 0.25
+const PAINT_STEP := 0.06
+const PAINT_TIME := 0.4
+const PAINT_SIDE := 0.92
+const PAINT_RADIUS := 0.22
+const PAINT_ALPHA := 0.95
+const PAINT_PALE := 0.82
+const PAINT_PALE_SHADE := 0.12
+const ISLET_PAINTED := 0.5
+const ISLET_FADE := 0.5
+const THEME_HOLD := 1.0
 ## The slide into the win's span (the host's SLOT_TIME), and the air the
 ## board keeps inside that span.
 const WIN_SLIDE := 0.45
@@ -558,6 +582,12 @@ var _islets_sig: Array = []
 ## The still sea -- basin, shallows, sandbars and ripples -- built once a size
 ## and a board, and dropped only by a resize or a new board.
 var _sea: ArrayMesh
+## The solved themed lagoon's beads, in the reference layout's space: rebuilt
+## every frame while they pour on, then kept (`_paint_done`). `_paint_from`
+## is every bead's square, the islet it pours from and how many cells away.
+var _paint: ArrayMesh
+var _paint_done := false
+var _paint_from: Array = []
 ## Every mesh the last `_draw` handed over: the sea, the laps and the board.
 var _shown: Array = []
 
@@ -823,6 +853,7 @@ const HAPTICS := {
 	"check": Haptics.WARN,
 	"heart_lost": Haptics.BAD,
 	"out_of_hearts": Haptics.LOSE,
+	"theme": Haptics.GOOD,
 }
 
 func _ready() -> void:
@@ -865,10 +896,22 @@ func _layer(nm: String, z: int, draw: Callable) -> Control:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_gen += 1
 	state = State.new()
-	state.build(rng, difficulty, bank_step)
+	state.build(rng, difficulty, bank_step, _night_pictures(difficulty))
 	max_hearts = int(State.HEARTS[state.band])
 	max_moves = state.moves_budget()
 	_begin()
+
+## The night's things this band may grow its sea in (State.Gen.THEMED_SIZES),
+## on a daily dealt first; [] on any other deal, which lays the square sea.
+func _night_pictures(difficulty: int) -> Array:
+	var out: Array = []
+	if bank_step != 0 or daily_key == 0 or difficulty < 0 or difficulty >= State.Gen.THEMED_SIZES.size():
+		return out
+	for side in State.Gen.THEMED_SIZES[difficulty]:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			out.append(pic)
+	return out
 
 ## The day as dealt, for tools/export_days.gd (PuzzleBase.day_dict). Insane
 ## comes out of its bank when the bank has the day (State.build). An islet is
@@ -899,9 +942,13 @@ func day_dict() -> Dictionary:
 		runs.append([lane.a.x, lane.a.y, lane.b.x, lane.b.y, v])
 		planks += v
 		doubles += 1 if v > 1 else 0
+	var lagoon: Array = []
+	for cell: Vector2i in state.theme.get("mask", {}):
+		lagoon.append([cell.x, cell.y])
 	var out := {
-		"source": "bank" if banked else "generator", "kind": "grid",
-		"payload": {"n": n, "islets": islets},
+		"source": "bank" if banked else ("theme" if state.themed() else "generator"), "kind": "grid",
+		"theme": String(state.theme.get("id", "")),
+		"payload": {"n": n, "islets": islets, "lagoon": lagoon},
 		"solution": {"runs": runs},
 		"metrics": {"size": n, "islets": islets.size(), "lanes": state.lanes.size(),
 			"runs": runs.size(), "planks": planks, "doubles": doubles,
@@ -940,6 +987,9 @@ func _begin() -> void:
 	_pending = []
 	_laps = []
 	_sea = null
+	_paint = null
+	_paint_done = false
+	_paint_from = []
 	_ref_cell = 0.0
 	_press_cell = State.NOWHERE
 	_press_up = -1.0
@@ -1264,13 +1314,18 @@ func _draw() -> void:
 		for m in [_sea, lap]:
 			if m != null:
 				draw_mesh(m, null, page, Color(1.0, 1.0, 1.0, seen))
-		for m in _mesh:
-			if m != null:
-				draw_mesh(m, null, board, Color(1.0, 1.0, 1.0, seen))
+		var fade := _islet_fade(t)
+		for i in _mesh.size():
+			if i == _mesh.size() - 1:
+				_in_ref = true
+				_draw_paint(t, board, seen)
+				_in_ref = false
+			if _mesh[i] != null:
+				draw_mesh(_mesh[i], null, board, Color(1.0, 1.0, 1.0, seen * (fade if i == _mesh.size() - 1 else 1.0)))
 		_in_ref = true
-		_draw_numbers(t, board, seen)
+		_draw_numbers(t, board, seen * fade)
 		_in_ref = false
-	_shown = [_sea, lap] + _mesh
+	_shown = [_sea, lap] + _mesh + [_paint]
 
 ## The layout the shapes are made at: the first one with room on it, and any
 ## larger one after (a shape made small and drawn large would blur). A
@@ -1290,6 +1345,8 @@ func _take_ref() -> void:
 		_runs_sig = []
 		_islets_sig = []
 		_mesh = null
+		_paint = null
+		_paint_done = false
 
 ## The reference layout onto the one the board has now.
 func _relay() -> Transform2D:
@@ -1915,6 +1972,7 @@ func _build_open_sea() -> ArrayMesh:
 	var b := Face.Builder.new()
 	var water := p.grow(_cell() * 0.15)
 	var r := _islet_r()
+	_lagoon(b)
 	# Since 2026-10-17 the open water carries nothing but the shallows round
 	# each islet, a pale halo fading out: no ripples, no pads, no blots.
 	for cell in state.islets:
@@ -1923,6 +1981,21 @@ func _build_open_sea() -> ArrayMesh:
 	if not state.lanterns.is_empty():
 		_night(b, water)
 	return b.mesh() if not b.verts.is_empty() else null
+
+## A themed sea's lagoon: the day's thing as paler water, a square at each
+## of the picture's beads. Nothing on the square sea.
+func _lagoon(b) -> void:
+	if not state.themed():
+		return
+	var fs := _cell() / float(State.Gen.FINE)
+	var o := _origin()
+	# Unfeathered: each square's feather overlapped its neighbour's and drew
+	# the grid back in as pale seams (and a soft rim of squares a fringe).
+	var feather: float = b.feather
+	b.feather = 0.0
+	for f: Vector2i in state.theme.beads:
+		b.fan(Face.Builder.round_rect(o + Vector2(f) * fs, Vector2.ONE * fs, 0.0), Color(Pal.SURFACE, LAGOON_ALPHA))
+	b.feather = feather
 
 ## Lantern Night's sky on the water: a dusk-blue veil over the pool and a
 ## scatter of reflected stars in the open water, kept off the islets. The
@@ -3607,7 +3680,8 @@ func completion_record() -> Dictionary:
 ## the win screen, because the board *is* the answer and there is nothing
 ## better to show.
 func flat_win() -> Dictionary:
-	return {"faces": [], "subtitle": tr("BR_WIN")}
+	var name := String(state.theme.get("name", ""))
+	return {"faces": [], "subtitle": tr("BR_WIN_THEME") % name if name != "" else tr("BR_WIN")}
 
 ## Long enough for the wave that lights the network, which runs outward from
 ## the islet the player finished at. It spends the wave's own clock
@@ -3616,7 +3690,10 @@ func flat_win() -> Dictionary:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return _land_lag() + _wave_at(_wave_depth()) + Motion.SOLVE_TIME * 0.5 + PARTY_AT + PARTY_EXTRA
+	var lead := _land_lag() + _wave_at(_wave_depth()) + Motion.SOLVE_TIME * 0.5 + PARTY_AT + PARTY_EXTRA
+	if state.themed():
+		lead = maxf(lead, _land_lag() + _pour_end() + ISLET_FADE + THEME_HOLD)
+	return lead
 
 ## How long after the last move the wave sets off: the last plank has to land
 ## before the light can run along it.
@@ -3656,8 +3733,100 @@ func _on_solved() -> void:
 	for cell in state.islets:
 		if not _flag.has(cell) or not bool(_flag[cell].open):
 			_flag[cell] = {"at": _now(), "open": true}
+	if state.themed():
+		# The colour pours on behind the wave, the theme cue as it starts; the
+		# win card names it (a toast would lie under the card).
+		_paint = null
+		_paint_done = false
+		_paint_from = []
+		_after(_land_lag() + (0.0 if Motion.reduce else PAINT_AT), func(): fx.cue("theme"))
+		_busy_for(_land_lag() + _pour_end() + ISLET_FADE)
 	_party(light - _now())
 	_refresh()
+
+# --- the day's thing poured on ---
+
+## Every bead's square, the islet nearest it and how far off, once a solve.
+func _paint_sources() -> Array:
+	if not _paint_from.is_empty() or not state.themed():
+		return _paint_from
+	var fine := float(State.Gen.FINE)
+	for f: Vector2i in state.theme.beads:
+		var mid := (Vector2(f) + Vector2.ONE * 0.5) / fine - Vector2.ONE * 0.5
+		var best := State.NOWHERE
+		var far := INF
+		for cell: Vector2i in state.islets:
+			var d := mid.distance_to(Vector2(cell))
+			if d < far:
+				far = d
+				best = cell
+		_paint_from.append([f, best, far])
+	return _paint_from
+
+## Seconds from the solve until the last bead is down.
+func _pour_end() -> float:
+	if Motion.reduce:
+		return 0.0
+	var far := 0.0
+	for e in _paint_sources():
+		far = maxf(far, float(e[2]))
+	return _wave_at(_wave_depth()) + PAINT_AT + far * PAINT_STEP + PAINT_TIME
+
+## How far one bead has poured on (0 to 1), off the wave's own clock.
+func _paint_level(e: Array, t: float) -> float:
+	if _solved_at == -INF:
+		return 0.0
+	if Motion.reduce:
+		return 1.0
+	var a := _arrived(e[1], t)
+	if a < 0.0:
+		return 0.0
+	return clampf((a - PAINT_AT - float(e[2]) * PAINT_STEP) / PAINT_TIME, 0.0, 1.0)
+
+## The islets' and numbers' alpha: whole, then easing to ISLET_PAINTED once
+## the last bead is down, so the picture reads through the network.
+func _islet_fade(t: float) -> float:
+	if _solved_at == -INF or not state.themed():
+		return 1.0
+	if Motion.reduce:
+		return ISLET_PAINTED
+	var u := clampf((t - _solved_at - _pour_end()) / ISLET_FADE, 0.0, 1.0)
+	return lerpf(1.0, ISLET_PAINTED, u * u * (3.0 - 2.0 * u))
+
+## The solved lagoon as its picture: a bead a square in the thing's own
+## colour, swelling in as it pours, over the planks. One mesh, kept once
+## every bead is down. Built in the reference layout's space.
+func _draw_paint(t: float, board: Transform2D, seen: float) -> void:
+	if _solved_at == -INF or not state.themed():
+		return
+	if _paint == null or not _paint_done:
+		var beads: Dictionary = state.theme.beads
+		var fs := _cell() / float(State.Gen.FINE)
+		var o := _origin()
+		var b := Face.Builder.new()
+		var all := true
+		for e in _paint_sources():
+			var k := _paint_level(e, t)
+			if k < 1.0:
+				all = false
+			if k <= 0.0:
+				continue
+			var bead = Pal.PG_BEADS.get(String(beads.get(e[0], "")))
+			if bead == null:
+				continue
+			var face: Color = bead
+			if face.get_luminance() > PAINT_PALE:
+				face = face.darkened(PAINT_PALE_SHADE)
+			var grow := Motion.back_out(k) if not Motion.reduce else 1.0
+			var side := Vector2.ONE * fs * PAINT_SIDE * lerpf(0.4, 1.0, grow)
+			var at := o + (Vector2(e[0]) + Vector2.ONE * 0.5) * fs - side * 0.5
+			b.fan(Face.Builder.round_rect(at + Vector2(0.0, fs * 0.05), side, fs * PAINT_RADIUS), Color(face.darkened(0.3), PAINT_ALPHA * k))
+			b.fan(Face.Builder.round_rect(at, side, fs * PAINT_RADIUS), Color(face, PAINT_ALPHA * k))
+			b.fan(Face.Builder.round_rect(at + side * Vector2(0.18, 0.12), side * Vector2(0.34, 0.16), fs * 0.06), Color(face.lightened(0.4), 0.7 * k))
+		_paint = b.mesh() if not b.verts.is_empty() else null
+		_paint_done = all
+	if _paint != null:
+		draw_mesh(_paint, null, board, Color(1.0, 1.0, 1.0, seen))
 
 ## A completed daily is rebuilt from its seed, so it opens on bare water. Lay
 ## every run the answer lays and settle the card as it stands once the solve's
