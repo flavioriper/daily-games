@@ -122,6 +122,17 @@ export function validTheme(t: unknown): t is Theme {
   return true;
 }
 
+/** What the day's two Peeplets may be doing (2026-11-06): they are painted
+ *  with short nub arms, and the vista reviewer turns down any arm longer than
+ *  a nub, so a line that has them hold, carry, reach for or hang something
+ *  (hanging socks on a washing line, 20261106; a clay bowl, 20261107) asks
+ *  for a painting that can never pass. They stand beside things instead. */
+export const CAST_RULE = `one short line of what two small creatures could be doing in that scene together while standing on ` +
+  `their own two feet with their short arms at their sides: standing side by side looking at something, watching, ` +
+  `peeking at, greeting each other, standing beside a thing (standing by the campfire watching the sparks; looking up at ` +
+  `the lantern together). They never hold, carry, reach for, pick, hang, push, roll, toast or touch anything, never sit, ` +
+  `and no people.`;
+
 const WRITER = `You choose the theme of the day for a cosy daily puzzle game played by all ages, in English, Portuguese and Spanish.
 
 A theme is one small, warm place or moment: a campfire at dusk, a bakery in the morning, a window on a rainy day, a tide pool, a garden shed, a picnic. Never a holiday, a religion, a country, a brand, a film, a real person, anything scary or sad, anything with writing in it.
@@ -132,7 +143,7 @@ The theme is drawn as pixel pictures of very few squares, so everything in it mu
 - "objects": exactly ${THINGS} single things from that scene, the simplest first, each drawn as one pixel art sprite on a bare board. Each must be recognisable by its outline alone (a mushroom, a mug, a tent: yes; a book, a blanket, a cloud of steam: no). "draw" says the thing with its colours, clearly different ones: three or four for the first ("a red mushroom with white spots and a cream stem"), then more with each, up to seven or eight for the last three, which are the ones with the most to them, full of detail to draw big (a basket of fruit, a tea tray, a lantern among leaves, a cottage with flower boxes). None of them is a thin or spindly shape: each fills most of a square. None is mostly one colour (a red apple, a blue teapot: no; a striped mug, a slice of watermelon, a toadstool: yes). "name" is its plain English name, one or two words, and "pt" and "es" the same in Portuguese (Brazil) and Spanish.
 - "name": the theme's name, two or three words, in each language.
 - "words": ${WORDS} common single nouns about the theme in each language, four to eight letters, lowercase.
-- "cast": one short line of what two small creatures could be doing in that scene together (rolling a hay bale, sharing a picnic blanket), no people.
+- "cast": ${CAST_RULE}
 - "id" values are lowercase English slugs.`;
 
 const THEME_SCHEMA = {
@@ -224,4 +235,45 @@ export async function makeTheme(day: number, recent: string[] = []): Promise<The
     }
   }
   return null;
+}
+
+const CAST_WRITER = `You write what the two small round creatures of a cosy puzzle game are doing in the day's painted scene. ` +
+  `Answer "cast": ${CAST_RULE}`;
+
+const CAST_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["cast"],
+  properties: {cast: {type: "string"}},
+};
+
+/** A pose any theme's pair can be painted in without a hand or a long arm. */
+export function safeCast(theme: Theme): string {
+  return `standing side by side near the ${theme.objects[0]?.name ?? "middle of the place"}, looking at it together`;
+}
+
+/**
+ * A new cast line for `theme` (2026-11-06): asked for after the morning
+ * vista was turned down twice in a row, since the line the painter keeps
+ * failing is often the reason. `tried` are the lines already painted, which
+ * the new one must not repeat. Falls back to safeCast(); never throws.
+ */
+export async function makeCast(theme: Theme, tried: string[] = []): Promise<string> {
+  if (available()) {
+    try {
+      const got = await ask<{cast: string}>({
+        system: CAST_WRITER,
+        prompt: `The theme: ${theme.name.en}. The scene: ${theme.scene}` +
+          (tried.length > 0 ? `\n\nThese were painted and turned down, so not these and nothing close:\n${tried.join("\n")}` : ""),
+        schema: CAST_SCHEMA,
+        role: "write",
+      });
+      const line = String(got.cast ?? "").trim();
+      if (text(line, CAST_MAX) && !tried.includes(line)) return line;
+    } catch (e) {
+      console.error(`theme: ${theme.id}, cast not written`, e);
+    }
+  }
+  const safe = safeCast(theme);
+  return tried.includes(safe) ? "standing side by side, looking out over the place together" : safe;
 }

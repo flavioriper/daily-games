@@ -3,7 +3,7 @@ import Beads = require("./beads");
 import type {Jelly} from "./jelly";
 import {BANDS as HOOP_BANDS, HoopPicture, makeHoop} from "./hoop";
 import {bySide, Picture, pixelBand, Pictures} from "./pictures";
-import {makeTheme, Theme, themed, validTheme} from "./theme";
+import {makeCast, makeTheme, Theme, themed, validTheme} from "./theme";
 import {dayList, DayThing, grow, makeThings, pool} from "./things";
 import {makeWords, Words} from "./words";
 import {Port, publishPorts, stagePorts} from "./ports";
@@ -43,14 +43,33 @@ import {boxOf, HEADER_KEY, makeHeader, makeVista, TIMES as VISTA_TIMES, Vistas} 
  * The `header` step (the menu header's own painting, the place from farther
  * away) needs no morning and is staged beside the four; it is optional when
  * publishing, but a day waits for it like any step.
+ *
+ * The paintings come first (the user, 2026-11-06: "start the new theme by
+ * the images, if none pass after some retries, go for another theme"): right
+ * after the theme, the morning vista; a morning turned down on RECAST_AFTER
+ * runs is painted on with a new cast line (makeCast), and one given up after
+ * MORNING_RUNS throws the theme away for a new one (retheme), up to THEMES a
+ * day, while the day is still RETHEME_LEAD_MS off. Only then is anything
+ * else spent on the theme. The last theme a day may have keeps going without
+ * its paintings, so a day is never left without a theme.
  */
 
 /** The steps of a day, in order. */
-export const STEPS: string[] = ["theme", "words", "things",
-  ...HOOP_BANDS.map((_, b) => `hoop${b}`), ...Beads.SIZES.map((s) => `pic${s}`),
-  HEADER_KEY, ...VISTA_TIMES.map((_, i) => `vista${i}`)];
+export const STEPS: string[] = ["theme", ...VISTA_TIMES.map((_, i) => `vista${i}`), HEADER_KEY,
+  "words", "things", ...HOOP_BANDS.map((_, b) => `hoop${b}`), ...Beads.SIZES.map((s) => `pic${s}`)];
 /** Runs a step may have before it is given up on. */
 const TRIES = 6;
+/** Runs the morning vista may have (two paintings a run) before the theme is
+ *  given up on: eight paintings, the last four on new cast lines. */
+const MORNING_RUNS = 4;
+/** Morning runs turned down before the cast line is written again, every run after. */
+const RECAST_AFTER = 2;
+/** Themes a day may go through for want of a morning that passes. */
+const THEMES = 3;
+/** A day is given a new theme only while its start is this far off: the
+ *  quizzes are written on the staged theme at 03:00 the day before
+ *  (publishDay), 21 hours ahead, and must not be written on a dropped one. */
+const RETHEME_LEAD_MS = 22 * 60 * 60 * 1000;
 /** The UTC hour the eve of a day publishes what it has: the day turns at
  *  00:00, and two half-hour runs a phone's fetch ahead is room enough. */
 const CLOSING = 22;
@@ -77,6 +96,12 @@ interface Staged {
   pictures?: Record<string, string>;
   tries?: Record<string, number>;
   done?: string[];
+  /** Cast lines the morning was painted on and turned down for. */
+  casts?: string[];
+  /** themed() of the themes this day threw away for want of paintings. */
+  dropped?: string[];
+  /** How many themes this day has gone through, the staged one included. */
+  themes?: number;
 }
 
 function staging(db: Firestore, day: number) {
@@ -103,12 +128,13 @@ function finished(s: Staged): boolean {
   return STEPS.every((step) => s.done?.includes(step));
 }
 
-/** True for an afternoon, dusk or night vista step while the morning is
- *  neither done nor given up (both put "vista0" in `done`): they are edits of
- *  it, so they are not run and no try is counted. The day is not `finished`
- *  meanwhile, so it still waits. */
+/** True for every step after the morning vista while the morning is neither
+ *  done nor given up (both put "vista0" in `done`): the afternoon, dusk and
+ *  night are edits of it, and since 2026-11-06 nothing else is spent on a
+ *  theme that may yet be thrown away for want of a morning. They are not run
+ *  and no try is counted; the day is not `finished` meanwhile, so it waits. */
 function waitsForMorning(step: string, s: Staged): boolean {
-  return step.startsWith("vista") && step !== "vista0" && !s.done?.includes("vista0");
+  return step !== "theme" && step !== "vista0" && !s.done?.includes("vista0");
 }
 
 /** The `pictures` content a staged day comes to, or null with no theme. */
@@ -247,10 +273,10 @@ async function stage(db: Firestore, day: number, ports: Port[]): Promise<void> {
 async function runStep(db: Firestore, when: Date, day: number, step: string, s: Staged, until: number):
   Promise<{save: Record<string, unknown>; made: boolean}> {
   if (step === "theme") {
-    const theme = await makeTheme(day, (await recent(db, when)).slice(0, 60));
+    const theme = await makeTheme(day, [...(s.dropped ?? []), ...(await recent(db, when))].slice(0, 60));
     return {save: theme === null ? {} : {theme: JSON.stringify(theme)}, made: theme !== null};
   }
-  const theme = parsed<Theme>(s.theme);
+  let theme = parsed<Theme>(s.theme);
   if (!validTheme(theme)) return {save: {}, made: false};
   if (step === "words") {
     const got = await makeWords(theme);
@@ -280,19 +306,50 @@ async function runStep(db: Firestore, when: Date, day: number, step: string, s: 
     const time = VISTA_TIMES[Number(step.slice("vista".length))];
     const first = time === "morning" ? null : (await vista(db, day, "morning").get()).get("jpg");
     const morning = typeof first === "string" ? {mime: "image/jpeg", bytes: Buffer.from(first, "base64")} : null;
+    // A morning turned down run after run is most often the cast line's
+    // fault (a pair asked to hold or reach for a thing): write another.
+    const recast: Record<string, unknown> = {};
+    if (time === "morning" && (s.tries?.[step] ?? 0) >= RECAST_AFTER) {
+      const tried = [...(s.casts ?? []), ...(theme.cast === undefined ? [] : [theme.cast])];
+      const cast = await makeCast(theme, tried);
+      console.log(`themeday: day ${day}, new cast line: ${cast}`);
+      theme = {...theme, cast};
+      recast.theme = JSON.stringify(theme);
+      recast.casts = tried;
+    }
     // The morning is painted twice a run (the reviewer counts its Peeplets and
     // limbs), the others once: a step is tried again on a later run (TRIES).
     const got = await makeVista(day, theme, time, morning, undefined, time === "morning" ? 2 : 1);
     if (got.vista !== null) {
       await vista(db, day, time).set({jpg: got.vista.bytes.toString("base64"), ...(got.box === null ? {} : {box: got.box})});
     }
-    return {save: {}, made: got.vista !== null};
+    return {save: recast, made: got.vista !== null};
   }
   const size = step.slice("pic".length);
   const sizes: Record<string, Picture> = {};
   await pixelBand(day, theme, Beads.SIZES.indexOf(Number(size)), sizes, []);
   const pic = sizes[size];
   return {save: pic === undefined ? {} : {[`pictures.${size}`]: JSON.stringify(pic)}, made: pic !== undefined};
+}
+
+/**
+ * Throws `day`'s staged theme away for a new one: the staging and what is
+ * under it (the vistas, the ports) are deleted, and the next run of the
+ * theme step is told of the dropped theme. True when it did; false when the
+ * day has had THEMES, its pictures are published, or it is too close.
+ */
+async function retheme(db: Firestore, now: Date, day: number, s: Staged): Promise<boolean> {
+  const count = s.themes ?? 1;
+  if (count >= THEMES) return false;
+  const start = Date.UTC(Math.floor(day / 10000), Math.floor(day / 100) % 100 - 1, day % 100);
+  if (start - now.getTime() < RETHEME_LEAD_MS) return false;
+  if ((await db.doc(`days/${day}/turns/pictures`).get()).exists) return false;
+  const dropped = [...(s.dropped ?? []), ...themed(parsed<Theme>(s.theme))];
+  const ref = staging(db, day);
+  await db.recursiveDelete(ref);
+  await ref.set({dropped, themes: count + 1});
+  console.log(`themeday: day ${day}, no morning passed, theme ${count} dropped for a new one`);
+  return true;
 }
 
 /** Takes the lease for a run, or false when another run holds it. */
@@ -324,6 +381,12 @@ export async function themeWork(db: Firestore, now: Date): Promise<void> {
       const day = keyOf(when);
       const ref = staging(db, day);
       if (ahead === 0 && (await db.doc(`days/${day}/turns/pictures`).get()).exists) continue;
+      again: for (;;) {
+      // A morning given up (now, or on a run before this rule) throws the
+      // theme away while there is time for another.
+      const at = ((await ref.get()).data() ?? {}) as Staged;
+      if (at.done?.includes("vista0") && at.theme !== undefined && !(await vista(db, day, "morning").get()).exists &&
+        await retheme(db, now, day, at)) continue again;
       for (const step of STEPS) {
         const s = ((await ref.get()).data() ?? {}) as Staged;
         if (finished(s)) break;
@@ -331,19 +394,23 @@ export async function themeWork(db: Firestore, now: Date): Promise<void> {
         if (waitsForMorning(step, s)) continue;
         if (Date.now() - t0 > START_BUDGET_MS) return;
         const tries = (s.tries?.[step] ?? 0) + 1;
+        const most = step === "vista0" ? MORNING_RUNS : TRIES;
         let out: {save: Record<string, unknown>; made: boolean} = {save: {}, made: false};
         try {
           out = await runStep(db, when, day, step, s, until);
         } catch (e) {
           console.error(`themeday: day ${day}, ${step} failed`, e);
         }
-        const over = out.made || tries >= TRIES;
+        const over = out.made || tries >= most;
         // update() takes the dotted paths (jellies.0, pictures.24) as fields
         // of a map; the document is made first so it has one to update.
         await ref.set({}, {merge: true});
         await ref.update({...out.save, [`tries.${step}`]: tries,
           ...(over ? {done: [...(s.done ?? []), step]} : {})});
         console.log(`themeday: day ${day}, ${step} ${out.made ? "made" : over ? "given up" : "to try again"} in ${Math.round((Date.now() - t0) / 1000)} s`);
+        if (step === "vista0" && over && !out.made) continue again;
+      }
+      break;
       }
       if (ahead <= 1) {
         await publishPictures(db, day, ahead === 0 || now.getUTCHours() >= CLOSING);

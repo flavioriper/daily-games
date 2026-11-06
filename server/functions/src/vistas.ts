@@ -66,9 +66,10 @@ const FIRST = (t: Theme, pair: [number, number]) => `Paint a wide landscape back
   `one thing; the left third calm and simple, since words are laid over it. ` +
   `Two Peeplets, the small round creatures of the second attached picture, exactly as drawn there: a round body, two short arms, two stubby legs, ` +
   `two eyes, no fingers, no neck. Both stand on their two legs, with both arms and both legs in plain view, in poses taken from the reference ` +
-  `sheet, never seated, hidden behind anything or cut off by the frame. Each Peeplet's body is one plain colour all over, with no clothes, no robe, no jacket; only the hat is worn. ` +
+  `sheet, never seated, hidden behind anything or cut off by the frame. Their arms stay short round nubs close to their sides: ` +
+  `they hold nothing, carry nothing and reach for nothing, whatever they are doing. Each Peeplet's body is one plain colour all over, with no clothes, no robe, no jacket; only the hat is worn. ` +
   `One is ${describe(pair[0])}, the other ${describe(pair[1])}. They are ` +
-  `${t.cast ?? "doing something small together that fits the place"}, in the right two thirds of the painting, each about one seventh of the ` +
+  `${t.cast ?? "standing side by side, looking at something in the place"}, in the right two thirds of the painting, each about one seventh of the ` +
   `painting's height, small figures in a wide place, never the main subject, painted in the same brushwork as the place. ${NEVER}`;
 
 /** The header: the same place from a rise or its far edge, at golden hour, the

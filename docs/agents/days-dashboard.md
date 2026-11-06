@@ -738,3 +738,37 @@ plays the 48 quartered. `cli.js bands <day.json> <size>...` redraws bands.
 in `things/` that grows. The whole of it is in `docs/agents/boards/how-big.md`,
 "New things every day". The first night after the deploy also runs the step
 for days already staged; a line for it in the log is that, not a fault.
+
+## Paintings first, a new theme when none pass (2026-11-06)
+
+20261106's vistas never published: the theme's cast line had the pair
+"hanging socks on a washing line", the painter stretched their arms to the
+line and the reviewer (nub arms only) turned down all twelve mornings; the
+afternoon, dusk and night are edits of the morning, so they went too and the
+phone fell back to the island (Puffin Steps) and the bundled rows. 20261101
+and 20261108 went the same way, and 20261107 (a clay bowl held) only just passed.
+Over 14 days about half the days had no vistas.
+
+What changed (`server/functions/src/themeday.ts`, `theme.ts`, `vistas.ts`):
+- **The cast rule** (`CAST_RULE` in theme.ts): the pair stands on its feet,
+  arms at its sides, looking at, watching or standing beside things; never
+  holding, carrying, reaching, hanging, rolling, touching or sitting. The
+  painter's FIRST prompt says the same whatever the line says.
+- **A new cast line** (`makeCast`): from the morning's third run on, each run
+  paints on a new line, told the ones already turned down (`casts` in the
+  staging); with no model it is `safeCast`, standing by the first thing.
+- **Paintings first**: STEPS is now theme, vista0..3, header, words, things,
+  hoops, pictures, and nothing after the morning runs while the morning is
+  pending (`waitsForMorning`).
+- **A new theme**: a morning given up after MORNING_RUNS (4 runs, 8
+  paintings) throws the theme away (`retheme`: the staging and its vistas and
+  ports deleted, `dropped` told to the next theme writer), up to THEMES (3) a
+  day, and only while the day is RETHEME_LEAD_MS (22 h) off, since the quizzes
+  are written on the staged theme at 03:00 the day before. The third theme
+  keeps going without paintings. A day given up under the old rule is
+  rethemed on the first run that finds it, when the lead allows.
+
+Checked with a throwaway run of themeWork on an in-memory Firestore (stubbed
+painter and models): order, recast on runs 3-4, two dropped themes then a
+pass, three failures keeping the third, an old given-up day rethemed, and a
+day 21 h off left alone. Not deployed: `tools/deploy_functions.sh` is the user's.
