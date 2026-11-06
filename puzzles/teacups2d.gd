@@ -132,7 +132,10 @@ const FADE_AT := 1.05
 const FADE_TIME := 0.35
 const SAUCER_TO := 0.25
 const THEME_WAVE := 0.025
-const THEME_HOLD := 0.9
+const THEME_HOLD := 1.1
+## The friends' laughs along a themed win, a place apart: the last of
+## Insane's twenty laughs by 0.9 s, before FADE_AT.
+const THEME_LAUGH_STEP := 0.022
 const PIC_FILL := 0.98
 const PAINT_PALE := 0.82
 const PAINT_PALE_SHADE := 0.12
@@ -292,7 +295,6 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_guests.clear()
 	if _dealt_daily():
 		_guests = _st.seat_guests(Cast.pair(daily_key))
-	_cast_ids.clear()
 	_fresh()
 	_enter_at = _t
 	_cue("enter")
@@ -503,9 +505,11 @@ func _solved_now() -> void:
 	_queue.clear()
 	_won_at = _t + 0.3
 	_after(0.25, func() -> void: _cue("solved"))
-	# the friends laugh along the win's wave
+	# the friends laugh along the win's wave; on a themed day a quicker
+	# one, done before they slip away for the picture
+	var step := THEME_LAUGH_STEP if themed() else WAVE_STEP
 	for c in _st.cups():
-		_after(0.3 + _st.slot[c] * WAVE_STEP + 0.4, _laugh.bind(c))
+		_after(0.3 + _st.slot[c] * step + (0.15 if themed() else 0.4), _laugh.bind(c))
 	if not demo:
 		_after(0.6, func() -> void:
 			fx.confetti(Vector2(size.x * 0.5, _l("oy")), 26, size.x * 0.7)

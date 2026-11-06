@@ -96,12 +96,13 @@ Peeplets come to tea, and the day's thing is hidden in the cloth.
   that place's pair is found, rippling out from the saucer
   (REVEAL_STEP a bead), so the picture only grows where memory is done
   with and never helps a pair. Its name stays hidden until the win.
-- **The win**: the friends laugh their wave, then slip away and the
+- **The win**: the friends laugh a quicker wave (THEME_LAUGH_STEP, the
+  last of twenty by 0.9 s), then slip away and the
   saucers step back to SAUCER_TO (FADE_AT 1.05 s, over 0.35 s; a friend
   half faded read as a ghost, so they go all the way), then every bead
   bumps from the middle out with the `theme` cue and a sparkle (THEME_AT
-  1.45 s). The card waits THEME_HOLD 0.9 longer: the picture stands alone
-  about 0.9 s. Subtitle `TC_WIN_THEME` ("Under the cloth: %s! %s"). A
+  1.45 s). The card waits THEME_HOLD 1.1 longer: the bump ends about
+  1.9 s after the solve and the card comes at 2.5 s. Subtitle `TC_WIN_THEME` ("Under the cloth: %s! %s"). A
   reopened themed day shows the picture with the friends away.
 - One cached mesh for the beads, built again only while one swells or the
   layout moves. opengl3_angle 810x1440 `theme`: Easy 100-106 play, 159
@@ -113,4 +114,5 @@ Peeplets come to tea, and the day's thing is hidden in the cloth.
   `theme_fade`, `theme_wave`, `theme_whole`. The harness boots
   world/main, so the real path reads today's cached night too (the
   reopened card names it).
-- Owed: phone (up to 20 views fading), ear, pt/es native read.
+- Owed: phone (up to 20 views fading), ear, pt/es native read; reduce
+  motion written (picture whole, friends away at once) but unseen.
