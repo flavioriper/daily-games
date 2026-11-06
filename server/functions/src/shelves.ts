@@ -38,6 +38,11 @@ const LABEL_MAX = 34;
 export interface Group {
   label: string;
   words: string[];
+  /** The day's theme shelf (theme.ts): four things of the theme's scene. At
+   *  most one a wording, and the first shelf once the day is made, because
+   *  the day card prints the theme's name and the player sorts it first.
+   *  Missing on a day with no theme and on every bank puzzle. */
+  theme?: boolean;
 }
 
 export interface Wording {
@@ -131,7 +136,7 @@ export function validPuzzle(p: unknown, band: number): p is Puzzle {
 export function tidy(p: Puzzle): Puzzle {
   const out = {id: p.id} as Puzzle;
   for (const l of LANGS) {
-    out[l] = {groups: p[l].groups.map((g) => ({label: g.label.trim(), words: g.words.map(norm)}))};
+    out[l] = {groups: p[l].groups.map((g) => ({label: g.label.trim(), words: g.words.map(norm), ...(g.theme === true ? {theme: true} : {})}))};
   }
   return out;
 }
@@ -158,8 +163,9 @@ const GROUP_SCHEMA = {
   properties: {
     label: {type: "string"},
     words: {type: "array", items: {type: "string"}},
+    theme: {type: "boolean"},
   },
-  required: ["label", "words"],
+  required: ["label", "words", "theme"],
   additionalProperties: false,
 };
 
@@ -269,12 +275,51 @@ const LEANS = [
   "things that do or have something unexpected, or a sound or a letter trick",
 ];
 
-function writerPrompt(day: number, band: number, taken: string[], draft = 0): string {
+/** The day's theme as the writer is told it, and what it asks: one plain
+ *  shelf of the theme's own things, which the day card has already named, so
+ *  it is the board's way in; and a red herring that seems to belong on it,
+ *  so the way in is not free. */
+function themeAsk(theme: Theme | null): string {
+  if (theme === null) return `Mark every group "theme": false.`;
+  const things = theme.objects.map((o) => o.name).join(", ");
+  return `The day has a theme, "${theme.name.en}" (pt "${theme.name.pt}", es "${theme.name.es}"): ` +
+    `${theme.scene} Its things: ${things}. Exactly one group in every language is the theme's, ` +
+    `marked "theme": true: four plain things a player would find there (not necessarily those listed), ` +
+    `the most obvious group of the board, its label naming the place or moment in a few warm words ` +
+    `("Round the campfire"), never just the theme's title. At least one red herring of another group ` +
+    `seems to belong on the theme's shelf. Every other group is marked "theme": false and has nothing ` +
+    `to do with the theme.`;
+}
+
+function writerPrompt(day: number, band: number, taken: string[], draft = 0, theme: Theme | null = null): string {
   const stale = taken.length === 0 ? "" :
     `\n\nGroups used lately, not to be used again nor anything close:\n${taken.map((r) => `- ${r}`).join("\n")}`;
   return `Write the shelves puzzle for day ${day}, draft ${draft + 1}: ${BRIEFS[band](1)} \
-Its subtle group leans on ${LEANS[draft % LEANS.length]}. Answer with exactly one \
+Its subtle group leans on ${LEANS[draft % LEANS.length]}. ${themeAsk(theme)} Answer with exactly one \
 puzzle in "puzzles".${stale}`;
+}
+
+/** Whether every language of `p` has exactly one theme shelf. */
+export function themed(p: Puzzle): boolean {
+  return LANGS.every((l) => p[l].groups.filter((g) => g.theme === true).length === 1);
+}
+
+/** `p` with its theme shelf first in every language (the day card named
+ *  it, so the player sorts it first and it wears the first plank); with no
+ *  theme flag at all when a language has none or more than one. */
+export function themeFirst(p: Puzzle): Puzzle {
+  const out = {id: p.id} as Puzzle;
+  const keep = themed(p);
+  for (const l of LANGS) {
+    const groups: Group[] = p[l].groups.map((g) => {
+      const {theme, ...rest} = g;
+      return keep && theme === true ? {...rest, theme: true} : rest;
+    });
+    const at = groups.findIndex((g) => g.theme === true);
+    if (at > 0) groups.unshift(...groups.splice(at, 1));
+    out[l] = {groups};
+  }
+  return out;
 }
 
 /** A wording's traps that hold: the word is on the board, and the group it
@@ -423,7 +468,11 @@ export function passing(puzzles: Puzzle[], sorts: Sort[], band = 0): Puzzle[] {
       else kept[l] = {groups: inFoundOrder(p[l].groups, s.shelves)};
     }
     if (why.length > 0) console.error(`shelves: ${p.id} turned down (${why.join("; ")}): ${p.en.groups.map((g) => g.label).join(" / ")}`);
-    else out.push(kept);
+    else {
+      const late = LANGS.filter((l) => kept[l].groups.findIndex((g) => g.theme === true) > 0);
+      if (late.length > 0) console.error(`shelves: ${p.id}'s theme shelf was not found first (${late.join(", ")})`);
+      out.push(themeFirst(kept));
+    }
   }
   return out;
 }
@@ -445,12 +494,12 @@ export function asked(day: unknown): string[] {
 
 /** A band's puzzles from the model: written, checked, sorted blind. Throws
  *  when the model could not be asked. */
-export async function writeBand(day: number, band: number, taken: string[], prefix = `d${day}b${band}`): Promise<Puzzle[]> {
+export async function writeBand(day: number, band: number, taken: string[], prefix = `d${day}b${band}`, theme: Theme | null = null): Promise<Puzzle[]> {
   // One board a request, the drafts side by side: three boards with their
   // red herrings in three languages ran Haiku past its 32k tokens.
   const asks = await Promise.allSettled(Array.from({length: DRAFTS}, (_, i) => ask<{puzzles: Omit<Puzzle, "id">[]}>({
     system: WRITER,
-    prompt: writerPrompt(day, band, taken, i),
+    prompt: writerPrompt(day, band, taken, i, theme),
     schema: BAND_SCHEMA,
     role: "write",
   })));
@@ -477,7 +526,10 @@ export async function writeBand(day: number, band: number, taken: string[], pref
     schema: SORT_SCHEMA,
     role: "review",
   });
-  return passing(written, Array.isArray(review.sorts) ? review.sorts : [], band);
+  const passed = passing(written, Array.isArray(review.sorts) ? review.sorts : [], band);
+  // On a themed day a board with its theme shelf comes first; one without
+  // still beats the bank.
+  return theme === null ? passed : [...passed.filter(themed), ...passed.filter((p) => !themed(p))];
 }
 
 /**
@@ -485,22 +537,26 @@ export async function writeBand(day: number, band: number, taken: string[], pref
  * used (asked()). Never throws: a band the model could not write is the
  * bank's, and with no model the whole day is.
  */
-export async function makeDay(day: number, recent: string[] = [], _theme: Theme | null = null): Promise<Day> {
+export async function makeDay(day: number, recent: string[] = [], theme: Theme | null = null): Promise<Day> {
   const reserve = bankDay(day);
   if (!available()) return {v: 1, source: "bank", bands: reserve};
   // The bands are written side by side, each given a second try: the review
   // turns down most boards since it asks for red herrings (2026-10-28), and
   // four bands one after another twice would outrun the night's half hour.
   const write = async (b: number): Promise<Puzzle | null> => {
+    let plain: Puzzle | null = null;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const list = await writeBand(day, b, recent, `d${day}b${b}${attempt > 0 ? `r${attempt}` : ""}`);
-        if (list.length > 0) return list[0];
+        const list = await writeBand(day, b, recent, `d${day}b${b}${attempt > 0 ? `r${attempt}` : ""}`, theme);
+        // A themed day tries again for a board with its theme shelf, and
+        // takes the plain one only on the last try.
+        if (list.length > 0 && (theme === null || themed(list[0]))) return list[0];
+        plain = plain ?? list[0] ?? null;
       } catch (e) {
         console.error(`shelves: band ${b} of day ${day} failed (try ${attempt + 1})`, e);
       }
     }
-    return null;
+    return plain;
   };
   const written = await Promise.all(GROUPS.map((_, b) => write(b)));
   const bands = written.map((p, b) => p ?? reserve[b]);

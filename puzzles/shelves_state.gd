@@ -160,7 +160,9 @@ func _begin(p: Dictionary, key: int, b: int, from: String) -> void:
 		var words: Array[String] = []
 		for w in g.words:
 			words.append(norm(w))
-		groups.append({"label": String(g.label).strip_edges(), "words": words})
+		# "theme": the day's theme shelf (server/functions/src/shelves.ts),
+		# the first shelf when there is one; a bank puzzle has none.
+		groups.append({"label": String(g.label).strip_edges(), "words": words, "theme": g.get("theme") == true})
 	restart()
 
 ## Every jar back on the counter, nothing shelved, all hearts.

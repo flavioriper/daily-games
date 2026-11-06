@@ -1727,6 +1727,9 @@ SETS = {
         "hush":     ('one small smooth pebble dropped onto a wooden board, a single soft rounded click, very short', 0.5, -24, FOLEY, "bank:pebble", "cut:0.12", "notes:0:-2", "tight"),
         "out":      ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.3", "notes:0.12:-3,-6,-9", "tight"),
         "reveal":   ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -17, FOLEY, "bank:wrap", "cut:0.1", "notes:0:0", "tight"),
+        # 2026-11-06: the day's theme shelf's rosette pinned on, the shelf's
+        # three wraps carried on up an octave (rides the rosette's ring)
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         "heart":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.07:0,7", "tight"),
         "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
         "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.05:-2,1,-2,0,3,1", "tight"),
@@ -1750,6 +1753,9 @@ SETS = {
         "erase":    ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -20, FOLEY, "bank:lip", "cut:0.12", "notes:0:-2", "tight"),
         "turn":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.16", "notes:0:0", "tight"),
         "right":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0.07:0,4,7", "tight"),
+        # 2026-11-06: the theme round found, its rosette rung: the right
+        # answer's wraps carried on up an octave
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         "wrong":    ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -16, FOLEY, "bank:tongue", "cut:0.2", "notes:0.1:-3,-6", "tight"),
         "lost":     ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -15, FOLEY, "bank:tongue", "cut:0.3", "notes:0.12:-3,-6,-9", "tight"),
         "repeat":   ('one soft tongue click, a hollow rounded pop, close, very short', 0.5, -21, FOLEY, "bank:tongue", "cut:0.12", "notes:0:-2", "tight"),

@@ -55,3 +55,18 @@
   key word accepted with praise, the first round moving on by itself, the
   rest by a tap);
   `tests/_shot_clues.gd -- <dir> d=<0..3> [tut=<page>|card]`.
+- **The day's theme round (2026-11-06, daily-theme roadmap wave 1).** On a
+  themed day the writer (`clues.ts` `themeAsk`) marks two of a band's
+  drafts `"theme": true`: ideas found or done in the theme's place, at the
+  band's difficulty ("Campfire at Dusk": things you toast), never the
+  theme itself, because the day card prints the title. `spoils` drops any
+  round, themed or not, whose label, clue or accept word holds a telling
+  word of the title (in its language) or that accepts the title typed.
+  `arrange` keeps one theme round a band, its last (the band's finale);
+  a band with none passing is asked once more. Bank rounds never carry it.
+  - The board: the theme round says `FC_THEME_ROUND` as it opens and wears
+    the rosette (`shelves_art.gd` `rosette`) pinned on the slate's top left
+    corner; found, the rosette hops, is rung and sparkled with the `theme`
+    cue (the right answer's wraps carried up an octave).
+  - Harness: `tests/_shot_clues.gd -- <dir> d=1 theme`. 87-163 draw calls.
+  - Unheard; undeployed until a person runs `tools/deploy_functions.sh`.

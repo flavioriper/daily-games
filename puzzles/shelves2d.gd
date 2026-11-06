@@ -45,6 +45,7 @@ const HAPTICS := {
 	"shuffle": Haptics.TAP,
 	"clear": Haptics.TICK,
 	"shelf": Haptics.GOOD,
+	"theme": Haptics.GOOD,
 	"close": Haptics.WARN,
 	"wrong": Haptics.WARN,
 	"repeat": Haptics.TICK,
@@ -88,6 +89,8 @@ const JUDGE_STEP := 0.11
 const JUDGE_HOLD := 0.14
 ## The last shelf goes up by itself, this long after the one before it.
 const LAST_AFTER := 0.5
+## The theme shelf's rosette is rung this long after the shelf is up.
+const THEME_PIN := 0.12
 ## Picked jars hold jam; a shelf's jars hold its colour's.
 const JAM := Color("e7748a")
 ## How many "a shelf went up" cheers there are (FS_CHEER_1..).
@@ -388,13 +391,35 @@ func _up(g: int, words: Array) -> void:
 	_cue("shelf", 1.0 + _st.shelved.size() * 0.05)
 	if not demo:
 		_after(RISE_TIME, func() -> void: fx.sparkle(_row_centre(_st.shelved.find(g)), Pal.SUN))
+		if _is_theme(g):
+			# the day's theme shelf: its rosette pops on, rung and sparkled
+			_after(RISE_TIME + THEME_PIN, func() -> void:
+				var at := _rosette_at(_st.shelved.find(g))
+				fx.ring(at, _l("row_h") * 0.5, Art.ROSETTE_RIM)
+				fx.sparkle(at, Art.ROSETTE_STAR)
+				_cue("theme"))
+
+func _is_theme(g: int) -> bool:
+	return g >= 0 and g < _st.groups.size() and bool(_st.groups[g].get("theme", false))
+
+## Where the theme shelf's rosette sits on row `r`, and how big it is.
+func _rosette_at(r: int) -> Vector2:
+	return _row_centre(r) + _rosette_off()
+
+func _rosette_off() -> Vector2:
+	return Vector2(-_l("grid_w") * 0.5 + _rosette_r() * 1.45, -_l("row_h") * 0.12)
+
+func _rosette_r() -> float:
+	return _l("row_h") * 0.19
 
 ## A shelf up is cheered: the day's subtlest shelf as a trick seen
 ## through, the others in a line that changes a shelf to the next.
 func _cheer(g: int) -> void:
 	if demo:
 		return
-	if g == _st.count() - 1 and _st.count() > 1:
+	if _is_theme(g):
+		_say_now(tr("FS_THEME"))
+	elif g == _st.count() - 1 and _st.count() > 1:
 		_say_now(tr("FS_SNEAKY"))
 	else:
 		_say_now(tr("FS_CHEER_%d" % (1 + (_st.shelved.size() + _seed_key) % CHEERS)))
@@ -805,13 +830,15 @@ func _word(font: Font, w: String, at: Vector2, width: float, ink: Color, grow :=
 	draw_string(font, at + Vector2(-tw * 0.5, font.get_ascent(fs) * 0.36), w, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
 
 func _plank_mesh(g: int) -> ArrayMesh:
-	var key := "%d:%d:%d" % [g, roundi(_l("grid_w")), roundi(_l("row_h"))]
+	var key := "%d:%d:%d:%s" % [g, roundi(_l("grid_w")), roundi(_l("row_h")), _is_theme(g)]
 	if not _planks.has(key):
 		var b := Face.Builder.new()
 		if g < 0:
 			Art.plank(b, Vector2.ZERO, _l("grid_w") + 40.0 * _u(), 16.0 * _u())
 		else:
 			Art.shelf(b, Vector2.ZERO, Vector2(_l("grid_w"), _l("row_h") * 0.92), g)
+			if _is_theme(g):
+				Art.rosette(b, _rosette_off(), _rosette_r())
 		_planks[key] = b.mesh()
 	return _planks[key]
 
@@ -834,10 +861,12 @@ func _draw_shelf(r: int) -> void:
 	var font: Font = CozyTheme.display(800)
 	var ink: Color = Art.SHELF_INK
 	var label: String = _st.groups[g].label
+	# the theme shelf's rosette takes the plank's left end: its text keeps clear
+	var room := 0.72 if _is_theme(g) else 0.9
 	var ls := roundi(LABEL_SIZE * u)
 	var lw := font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, ls).x
-	if lw > _l("grid_w") * 0.9:
-		ls = int(ls * _l("grid_w") * 0.9 / lw)
+	if lw > _l("grid_w") * room:
+		ls = int(ls * _l("grid_w") * room / lw)
 		lw = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, ls).x
 	if k < 0.99:
 		return
@@ -846,8 +875,8 @@ func _draw_shelf(r: int) -> void:
 	var body: Font = CozyTheme.display(700)
 	var ws := roundi(SHELF_WORDS * u)
 	var ww := body.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, ws).x
-	if ww > _l("grid_w") * 0.92:
-		ws = int(ws * _l("grid_w") * 0.92 / ww)
+	if ww > _l("grid_w") * (room + 0.02):
+		ws = int(ws * _l("grid_w") * (room + 0.02) / ww)
 		ww = body.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, ws).x
 	draw_string(body, c + Vector2(-ww * 0.5, _l("row_h") * 0.26), words, HORIZONTAL_ALIGNMENT_LEFT, -1, ws, Color(ink, 0.85))
 

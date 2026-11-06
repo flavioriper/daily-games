@@ -54,3 +54,27 @@
   - Bank 16/16/12/11 (Insane by Haiku, ib003 dropped by hand for "JUKEBOX" under "Words before box").
   - Not deployed: the night's new prompts need `tools/deploy_functions.sh`
     (a person runs it); until then the nightly days are the old writer's.
+- **The day's theme shelf (2026-11-06, daily-theme roadmap wave 1).** On a
+  themed day the night's writer (`shelves.ts` `themeAsk`) makes one plain
+  group of every board the theme's: four things of its scene, the board's
+  most obvious group, labelled with the place in warm words (never the
+  theme's bare title), and at least one red herring of another group that
+  seems to belong on it. The group carries `"theme": true`; the blind
+  reviewer is never told. `themeFirst` puts that shelf first in every
+  language (the day card prints the theme, so the player sorts it first and
+  it wears the first plank), and drops the flag when a language has none or
+  more than one; the log says when the reviewer did not find it first. A
+  band tries again for a themed board and takes a plain one only when the
+  second try has none. Bank puzzles never carry the flag.
+  - The board: a theme shelf wears a paper rosette with a star at its left
+    end (`shelves_art.gd` `rosette`, its own colours, never the plank's
+    shade: the shelves are coloured by index), its label and words keep
+    clear of it (72% of the plank), and going up it is rung and sparkled
+    `THEME_PIN` after the rise with the `theme` cue (the shelf's wraps
+    carried up an octave, `bank:wrap` 7,12,16) and the line `FS_THEME`.
+  - Harness: `tests/_shot_shelves.gd -- <dir> d=1 theme` marks the first
+    shelf the theme's. 113-155 draw calls.
+  - Unheard; the night's writer is undeployed until a person runs
+    `tools/deploy_functions.sh`, and the first themed board is the first
+    day published after that. Not smoke-run with a model: the local
+    OpenRouter key was out of credits (402) on 2026-11-06.

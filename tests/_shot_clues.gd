@@ -17,6 +17,8 @@ var _band := 1
 var _page := 1
 var _f := 0
 var _step := 0
+## `theme`: the first round is marked the band's theme round (its rosette).
+var _theme := false
 var _diag: Control
 var _osk := -1.0
 
@@ -32,6 +34,8 @@ func _initialize() -> void:
 			_step = 60
 		elif a.begins_with("osk="):
 			_osk = float(a.substr(4))
+		elif a == "theme":
+			_theme = true
 		elif a == "out":
 			_step = 40
 		else:
@@ -101,6 +105,10 @@ func _process(_delta: float) -> bool:
 		return false
 	match _step:
 		0:
+			if _theme and not bool(st.rounds[0].get("theme", false)):
+				st.rounds[0]["theme"] = true
+				_b._fresh_round()
+				return false
 			_shot("rest")
 			_b.commit_row()
 			_step = 1

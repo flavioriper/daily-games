@@ -47,6 +47,11 @@ export interface Round {
   en: Wording;
   pt: Wording;
   es: Wording;
+  /** The band's round from the day's theme (theme.ts): an idea found or
+   *  done in the theme's place, never the theme itself, which the day card
+   *  prints. At most one a band, its last round. Missing on a day with no
+   *  theme and on every bank round. */
+  theme?: boolean;
 }
 
 export interface Day {
@@ -248,8 +253,8 @@ const WORDING_SCHEMA = {
 
 const ROUND_SCHEMA = {
   type: "object",
-  properties: {en: WORDING_SCHEMA, pt: WORDING_SCHEMA, es: WORDING_SCHEMA},
-  required: ["en", "pt", "es"],
+  properties: {en: WORDING_SCHEMA, pt: WORDING_SCHEMA, es: WORDING_SCHEMA, theme: {type: "boolean"}},
+  required: ["en", "pt", "es", "theme"],
   additionalProperties: false,
 };
 
@@ -297,10 +302,55 @@ const BRIEFS = [
   (n: number) => `${n} hard rounds: subtler ideas (a hidden property, a partner word, a shared use), the first three clues misleading.`,
 ];
 
-function writerPrompt(day: number, band: number, taken: string[]): string {
+/** The day's theme as the writer is told it: one round's idea comes out
+ *  of the theme's place, and is never the theme, which the day card names. */
+function themeAsk(theme: Theme | null): string {
+  if (theme === null) return `Mark every round "theme": false.`;
+  return `The day has a theme, "${theme.name.en}" (pt "${theme.name.pt}", es "${theme.name.es}"): ` +
+    `${theme.scene} Its things: ${theme.objects.map((o) => o.name).join(", ")}. Exactly two of the rounds ` +
+    `are the theme's, marked "theme": true: each an idea found or done in that place or moment, ` +
+    `at the band's difficulty ("Campfire at Dusk": "things you toast", "things that crackle"), never ` +
+    `the theme itself: no word of the theme's title in any language may be in the label, a clue or an ` +
+    `accept word. The other rounds are marked "theme": false and have nothing to do with the theme.`;
+}
+
+function writerPrompt(day: number, band: number, taken: string[], theme: Theme | null = null): string {
   const stale = taken.length === 0 ? "" :
     `\n\nIdeas used lately, not to be used again nor anything close:\n${taken.map((r) => `- ${r}`).join("\n")}`;
-  return `Write the clue rounds for day ${day}: ${BRIEFS[band](DRAFTS[band])} No two rounds share an idea.${stale}`;
+  return `Write the clue rounds for day ${day}: ${BRIEFS[band](DRAFTS[band])} No two rounds share an idea. ${themeAsk(theme)}${stale}`;
+}
+
+/** Whether `r` gives the day's theme away: a telling word of the theme's
+ *  title (in that language) is in its label, a clue or an accept word, or
+ *  the title typed is a right answer. The day card prints the title, so such
+ *  a round is free; it is dropped, themed or not. */
+export function spoils(r: Round, theme: Theme | null): boolean {
+  if (theme === null) return false;
+  return LANGS.some((l) => {
+    const title = String(theme.name[l] ?? "");
+    if (title.trim() !== "" && accepts(r[l], title)) return true;
+    const telling = words(title).filter((w) => w.length >= CONTAINS_MIN && !GENERIC.has(w));
+    const said = [r[l].label, ...r[l].clues, ...r[l].accept].flatMap(words);
+    return telling.some((t) => said.some((w) => w === t || w === `${t}s` || `${w}s` === t));
+  });
+}
+
+/** A band's `n` rounds from what passed: the plain ones first and, when one
+ *  passed, a single theme round last, the band's finale. Flags past the
+ *  first theme round are dropped. */
+export function arrange(list: Round[], n: number): Round[] {
+  const plain = list.filter((r) => r.theme !== true).map(({theme: _t, ...r}) => r as Round);
+  const themedOne = list.find((r) => r.theme === true);
+  if (themedOne === undefined || plain.length < n - 1) {
+    let seen = false;
+    return list.slice(0, n).map((r) => {
+      const keep = r.theme === true && !seen;
+      if (keep) seen = true;
+      const {theme: _t, ...rest} = r;
+      return (keep ? {...rest, theme: true} : rest) as Round;
+    });
+  }
+  return [...plain.slice(0, n - 1), {...themedOne, theme: true}];
 }
 
 // --- the reviewer ---
@@ -402,19 +452,24 @@ export function asked(day: unknown): string[] {
   return out;
 }
 
-export async function writeBand(day: number, band: number, taken: string[], prefix = `d${day}b${band}`): Promise<Round[]> {
+export async function writeBand(day: number, band: number, taken: string[], prefix = `d${day}b${band}`, theme: Theme | null = null): Promise<Round[]> {
   const draft = await ask<{rounds: Omit<Round, "id">[]}>({
     system: WRITER,
-    prompt: writerPrompt(day, band, taken),
+    prompt: writerPrompt(day, band, taken, theme),
     schema: BAND_SCHEMA,
     role: "write",
   });
   const written = (Array.isArray(draft.rounds) ? draft.rounds : [])
-    .map((d, i) => ({id: `${prefix}r${i}`, en: d.en, pt: d.pt, es: d.es}))
+    .map((d, i): Round => ({id: `${prefix}r${i}`, en: d.en, pt: d.pt, es: d.es, ...(theme !== null && d.theme === true ? {theme: true} : {})}))
     .filter((r: Round): r is Round => {
       const ok = validRound(r as unknown);
       if (!ok) console.error(`clues: ${r.id} not valid: ${JSON.stringify(r.en).slice(0, 200)}`);
       return ok;
+    })
+    .filter((r) => {
+      const bad = spoils(r, theme);
+      if (bad) console.error(`clues: ${r.id} gives the theme away: ${r.en.label}`);
+      return !bad;
     });
   if (written.length === 0) return [];
   const review = await ask<{guesses: Guess[]}>({
@@ -431,7 +486,7 @@ export async function writeBand(day: number, band: number, taken: string[], pref
  * throws: a band the model could not fill is the bank's, and with no model
  * the whole day is.
  */
-export async function makeDay(day: number, recent: string[] = [], _theme: Theme | null = null): Promise<Day> {
+export async function makeDay(day: number, recent: string[] = [], theme: Theme | null = null): Promise<Day> {
   const reserve = bankDay(day);
   if (!available()) return {v: 1, source: "bank", bands: reserve};
   const taken = recent.slice();
@@ -440,9 +495,11 @@ export async function makeDay(day: number, recent: string[] = [], _theme: Theme 
   for (let b = 0; b < ROUNDS.length; b++) {
     // A band short of rounds is asked once more, told what it already has.
     let list: Round[] = [];
-    for (let tryNo = 0; tryNo < 2 && list.length < ROUNDS[b]; tryNo++) {
+    // On a themed day it is asked again, too, when no theme round passed.
+    const short = () => list.length < ROUNDS[b] || (theme !== null && !list.some((r) => r.theme === true));
+    for (let tryNo = 0; tryNo < 2 && short(); tryNo++) {
       try {
-        const got = await writeBand(day, b, [...taken, ...list.map((r) => r.en.label)], `d${day}b${b}t${tryNo}`);
+        const got = await writeBand(day, b, [...taken, ...list.map((r) => r.en.label)], `d${day}b${b}t${tryNo}`, theme);
         list = [...list, ...got];
       } catch (e) {
         console.error(`clues: band ${b} of day ${day} failed, the bank fills it`, e);
@@ -450,7 +507,7 @@ export async function makeDay(day: number, recent: string[] = [], _theme: Theme 
     }
     let band: Round[];
     if (list.length >= ROUNDS[b]) {
-      band = list.slice(0, ROUNDS[b]);
+      band = arrange(list, ROUNDS[b]);
     } else {
       band = reserve[b];
       fromBank++;

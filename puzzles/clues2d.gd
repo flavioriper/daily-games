@@ -49,6 +49,7 @@ const HAPTICS := {
 	"erase": Haptics.TICK,
 	"turn": Haptics.TICK,
 	"right": Haptics.GOOD,
+	"theme": Haptics.GOOD,
 	"wrong": Haptics.WARN,
 	"lost": Haptics.LOSE,
 	"repeat": Haptics.TICK,
@@ -117,6 +118,9 @@ var osk_override := -1.0
 ## This round's wrong lines as typed, and the praise of the last found.
 var _tried: Array[String] = []
 var _praise := ""
+## The theme round's rosette, built once a size.
+var _rosette: ArrayMesh
+var _rosette_key := -1
 var _round_no := 0
 var _clear := Vector2.ZERO
 var _won := false
@@ -298,6 +302,10 @@ func _fresh_round() -> void:
 		_turned_at.append(-INF)
 	_turned_at[0] = _t + (0.0 if Motion.reduce else 0.25)
 	_relayout()
+	# the band's round from the day's theme wears its rosette and says so:
+	# the day card named the theme, so it is the player's way in
+	if _is_theme():
+		_say_now(tr("FC_THEME_ROUND"))
 
 func day_dict() -> Dictionary:
 	if not _dealt:
@@ -412,6 +420,11 @@ func _round_over(right: bool) -> void:
 	var cards: int = _st.results[_st.results.size() - 1]
 	if right:
 		_praise = tr("FC_PRAISE_%d" % clampi(cards, 1, State.CLUES))
+	if right and not demo and _is_theme():
+		_after(0.35, func() -> void:
+			fx.ring(_rosette_at(), _rosette_r() * 2.2, Hearts.ROSETTE_RIM)
+			fx.sparkle(_rosette_at(), Hearts.ROSETTE_STAR)
+			_cue("theme"))
 	if right and not demo:
 		fx.sparkle(_slate_centre(), Pal.SUN)
 		fx.ring(_slate_centre(), _l("slate_w") * 0.4, Pal.GOOD)
@@ -660,10 +673,41 @@ func _draw() -> void:
 	for i in State.CLUES:
 		_draw_card(i)
 	_draw_slate()
+	_draw_rosette()
 	_draw_tried()
 	_draw_tries()
 	_draw_say()
 	_draw_praise()
+
+## Whether the round in hand is the band's from the day's theme.
+func _is_theme() -> bool:
+	return not _st.rounds.is_empty() and bool(_st.round_now().get("theme", false))
+
+func _rosette_r() -> float:
+	return _l("slate_h") * 0.27
+
+## The theme round's rosette, pinned on the slate's top left corner.
+func _rosette_at() -> Vector2:
+	var r: Rect2 = _L.get("slate", Rect2())
+	return r.position + Vector2(_rosette_r() * 1.05, _rosette_r() * 0.75)
+
+func _draw_rosette() -> void:
+	if not _is_theme() or _phase == Phase.DONE:
+		return
+	var key := roundi(_rosette_r())
+	if _rosette == null or _rosette_key != key:
+		var b := Face.Builder.new()
+		Hearts.rosette(b, Vector2.ZERO, _rosette_r())
+		_rosette = b.mesh()
+		_rosette_key = key
+	var e := _t - _round_at
+	var k := 1.0 if Motion.reduce or e >= Motion.POP_IN else Motion.pop_in_scale(maxf(e, 0.0)).x
+	if _phase == Phase.OVER and _st.results.size() > _st.index and _st.results[_st.index] > 0 and not Motion.reduce:
+		# found: it hops once with the praise
+		var lift := Motion.hop_lift(_t - _over_at - 0.35, Motion.SOLVE_HOP * _u(), Motion.SOLVE_TIME)
+		draw_mesh(_rosette, null, Transform2D(0.0, Vector2(k, k), 0.0, _rosette_at() + Vector2(0.0, lift)))
+		return
+	draw_mesh(_rosette, null, Transform2D(0.0, Vector2(k, k), 0.0, _rosette_at()))
 
 func _card_mesh(face: bool) -> ArrayMesh:
 	var key := "%s:%d:%d" % [face, roundi(_l("card_w")), roundi(_l("card_h"))]

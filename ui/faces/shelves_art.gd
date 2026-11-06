@@ -81,6 +81,34 @@ static func shelf(b: Face.Builder, at: Vector2, sz: Vector2, g: int) -> void:
 	b.fan(Face.Builder.round_rect(r.position, r.size, sz.y * 0.2), c)
 	b.fan(Face.Builder.round_rect(r.position + Vector2(6.0, 6.0), Vector2(r.size.x - 12.0, r.size.y * 0.4), sz.y * 0.16), Color(1, 1, 1, 0.22))
 
+## The day's theme rosette (2026-11-06): a paper rosette with two ribbon
+## tails and a star, pinned on the theme's shelf (and on Five Clues' slate
+## for its theme round). Its own colours, never a shade of the plank's: the
+## shelves are coloured by index. `r` is the rosette's radius.
+const ROSETTE := Color("fffaf0")
+const ROSETTE_RIM := Color("e0795f")
+const ROSETTE_DEEP := Color("b85640")
+const ROSETTE_STAR := Color("f0b23c")
+
+static func rosette(b: Face.Builder, at: Vector2, r: float) -> void:
+	# the two tails, under the rosette
+	for side in [-1.0, 1.0]:
+		var top := at + Vector2(side * r * 0.32, r * 0.2)
+		var foot := at + Vector2(side * r * 0.78, r * 1.55)
+		var w := Vector2(r * 0.3, 0.0)
+		b.polygon(PackedVector2Array([top - w, top + w, foot + w, foot + Vector2(0.0, -r * 0.22), foot - w]), ROSETTE_DEEP)
+	var scallop := PackedVector2Array()
+	for i in 32:
+		var a := TAU * i / 32.0
+		scallop.append(at + Vector2(cos(a), sin(a)) * r * (1.0 if i % 2 == 0 else 0.88))
+	b.fan(scallop, ROSETTE_RIM)
+	b.disc(at, r * 0.74, ROSETTE)
+	var star := PackedVector2Array()
+	for i in 10:
+		var a := -PI * 0.5 + PI * i / 5.0
+		star.append(at + Vector2(cos(a), sin(a)) * r * (0.52 if i % 2 == 0 else 0.22))
+	b.polygon(star, ROSETTE_STAR)
+
 ## A heart drawn straight on `ci`: full, or its outline when spent.
 static func draw_heart(ci: CanvasItem, at: Vector2, r: float, full: bool) -> void:
 	var pts := PackedVector2Array()

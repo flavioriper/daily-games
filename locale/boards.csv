@@ -3314,6 +3314,7 @@ FS_CHEER_4,Lid on tight!,Tampa bem fechada!,¡Tapa bien cerrada!
 FS_CHEER_5,Sharp eye!,Olho bom!,¡Buen ojo!
 FS_CHEER_6,Got that one!,Essa foi!,¡Esa salió!
 FS_SNEAKY,You saw through the sneaky one!,Você pegou a mais traiçoeira!,¡Descubriste la más tramposa!
+FS_THEME,That's today's theme!,Esse é o tema do dia!,¡Ese es el tema del día!
 FS_LAST,And the last one goes up by itself.,E a última sobe sozinha.,Y la última sube sola.
 HTP_FS_PICK,"Pick four, shelve them",Escolha quatro e guarde,Elige cuatro y guárdalas
 HTP_FS_PICK_BODY,"Tap four jars whose words go together, then the tick. Four of one shelf go up to the top of the dresser.",Toque em quatro potes cujas palavras combinam e depois no visto. Quatro da mesma prateleira sobem para o alto da cristaleira.,Toca cuatro frascos cuyas palabras van juntas y luego la palomita. Cuatro del mismo estante suben a lo alto del aparador.
@@ -3360,6 +3361,7 @@ FC_PRAISE_2,Brilliant!,Brilhante!,¡Brillante!
 FC_PRAISE_3,Sharp!,Afiado!,¡Agudo!
 FC_PRAISE_4,Got it!,Acertou!,¡Lo tienes!
 FC_PRAISE_5,"Phew, just in time!","Ufa, por pouco!","¡Uf, por los pelos!"
+FC_THEME_ROUND,This one's from today's theme!,Essa vem do tema do dia!,¡Esta viene del tema del día!
 HTP_FC_GUESS,Name the idea,Diga a ideia,Di la idea
 HTP_FC_GUESS_BODY,"Every card is a thing that belongs to one hidden idea. Type the idea and press Enter. Close is fine: plurals, typos and the idea's main word all count.","Cada carta é uma coisa de uma ideia escondida. Digite a ideia e aperte Enter. Chegar perto basta: plural, erro de digitação e a palavra principal da ideia valem.","Cada carta es una cosa de una idea oculta. Escribe la idea y pulsa Enter. Acercarse basta: plurales, erratas y la palabra principal de la idea cuentan."
 HTP_FC_WRONG,A wrong idea,Uma ideia errada,Una idea equivocada

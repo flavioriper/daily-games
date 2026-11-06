@@ -282,7 +282,9 @@ func _begin(list: Array, key: int, difficulty: int, from: String) -> void:
 		var clues: Array[String] = []
 		for c in w.clues:
 			clues.append(String(c).strip_edges())
-		rounds.append({"id": String(r.id), "label": String(w.label).strip_edges(), "clues": clues, "accept": Array(w.accept)})
+		# "theme": the band's round from the day's theme
+		# (server/functions/src/clues.ts), its last; a bank round has none.
+		rounds.append({"id": String(r.id), "label": String(w.label).strip_edges(), "clues": clues, "accept": Array(w.accept), "theme": r.get("theme") == true})
 	restart()
 
 func restart() -> void:
