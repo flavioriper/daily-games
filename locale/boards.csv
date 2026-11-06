@@ -3027,6 +3027,7 @@ MK_WIN_N,%d made in %d steps.,%d feito em %d passos.,%d hecho en %d pasos.
 MK_WIN_FEWEST,Not one step more than needed.,Nenhum passo a mais.,Ni un paso de más.
 MK_WIN_MORE,It can be done in %d.,Dá para fazer em %d.,Se puede hacer en %d.
 MK_WIN_CLOSE,One step past the fewest: %d.,Um passo além do mínimo: %d.,Un paso más que el mínimo: %d.
+MK_WIN_THEME,"Today's order: %s. %s","Pedido de hoje: %s. %s","El pedido de hoy: %s. %s"
 HTP_MK_MAKE,Make a crate,Junte caixotes,Junta cajas
 HTP_MK_MAKE_BODY,"Tap a crate, then a sign: every other crate shows what it would make. Tap one and the first slides into it, one crate with the answer.","Toque num caixote, depois num sinal: cada outro caixote mostra o que daria. Toque num e o primeiro entra nele, um caixote com o resultado.","Toca una caja, luego un signo: cada otra caja muestra lo que daría. Toca una y la primera entra en ella, una caja con el resultado."
 HTP_MK_SIGNS,The signs,Os sinais,Los signos

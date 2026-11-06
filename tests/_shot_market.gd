@@ -19,6 +19,9 @@ var _page := 0
 var _f := 0
 var _step := 0
 var _diag: Control
+## `theme` (or `night=YYYYMMDD`): the order is for the newest cached night's
+## thing (the harness's backend never starts, so it is handed in).
+var _night := ""
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -30,6 +33,10 @@ func _initialize() -> void:
 				_page = int(a.substr(4))
 		elif a == "card":
 			_step = 60
+		elif a == "theme":
+			_night = "newest"
+		elif a.begins_with("night="):
+			_night = a.substr(6)
 		else:
 			_dir = a
 	var progress = load("res://core/progress.gd")
@@ -47,6 +54,24 @@ func _shot(name: String) -> void:
 	var calls := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
 	root.get_texture().get_image().save_png("%s/mk_%s.png" % [_dir, name])
 	print("shot %s draw_calls=%d" % [name, calls])
+
+## The night's thing for the band, as the board would read it.
+func _themed() -> Dictionary:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var pick := String(files[-1]) if _night == "newest" else "pictures-%s-content.json" % _night
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + pick))
+	var M = load("res://puzzles/market2d.gd")
+	for side in M.THEMED_SIZES[_band]:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			print("theme: ", pick, " ", side, " ", p.id)
+			return {"id": "themed_" + String(p.id), "name": String(p.name.en).capitalize(), "rows": p.rows}
+	return {}
 
 ## The answer's next step's places on the stall as it is.
 func _places(st, s: Array) -> Array:
@@ -101,12 +126,17 @@ func _process(_delta: float) -> bool:
 			_host = _menu.get_child(_menu.get_child_count() - 1)
 		if _f == 7200:
 			_b = _host._puzzle
+			if _night != "":
+				_b._theme = _themed()
+				_b._paint_at = _b._t - 10.0
 			_shot("reopen")
 			print("reopen done=%s steps=%d slots=%s" % [_b.is_done(), _b.state().steps, str(_b.state().slots)])
 			return true
 		return false
 	if _b == null:
 		_b = _host._puzzle
+		if _night != "":
+			_b._theme = _themed()
 	var st = _b.state()
 	match _step:
 		0:
@@ -186,6 +216,11 @@ func _process(_delta: float) -> bool:
 		6:
 			if _f == 6012:
 				_shot("won_early")
+			if _night != "" and _f == 6060:
+				_shot("won_paint")
+			if _night != "" and _f == 6110:
+				_shot("won_whole")
+				print("subtitle: ", _b.flat_win().subtitle)
 			if _f == 6240:
 				_shot("won")
 				_host.closed.emit()

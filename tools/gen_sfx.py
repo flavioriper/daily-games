@@ -1612,7 +1612,10 @@ SETS = {
     # 2026-10-26 made-fun pass: `slip` the lip twice falling (a step that
     # cost a star; the star falls off the count line). A step that brings
     # the stall nearer the order pitches `make` up at play, no new take.
+    # 2026-11-06 (the daily theme): `theme`, the boards' wrap climbing an
+    # octave, as a themed order's chalk thing takes its beads.
     "market": {
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         "slip":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -18, FOLEY, "bank:lip", "cut:0.2", "notes:0.09:-1,-5", "tight"),
         "pick":     ('one small smooth pebble dropped onto a wooden board, a single soft rounded click, very short', 0.5, -16, FOLEY, "bank:pebble", "cut:0.16", "notes:0:1", "tight"),
         "drop":     ('a single mouth pop made with the lips, soft and rounded, very short, close', 0.5, -20, FOLEY, "bank:lip", "cut:0.14", "notes:0:-3", "tight"),

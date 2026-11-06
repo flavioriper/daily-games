@@ -48,6 +48,7 @@ const Fx2D = preload("res://ui/fx2d.gd")
 const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 
 const Made = State.Made
 const SLOTS := State.SLOTS
@@ -63,6 +64,7 @@ const HAPTICS := {
 	"reset": Haptics.TAP,
 	"hint": Haptics.GOOD,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 ## The screen the board was drawn on; everything scales with the width.
@@ -122,6 +124,27 @@ const SAY_TIME := 2.4
 ## The win: the crates' wave, how long the board's own win plays.
 const WIN_HOLD := 1.4
 const WAVE_STEP := 0.07
+## The daily theme (2026-11-06): on a daily whose night pictures this phone
+## holds, the order is for the day's thing, sketched in chalk on the left of
+## the order board (SKETCH_SIDE of its height, SKETCH_X of its width left of
+## the middle; the words move TEXT_X right). Filled, the sketch takes the
+## picture's beads row by row from the bottom, PAINT_AT after the solve's
+## flourish, a row every PAINT_STEP, each bead swelling in over PAINT_TIME,
+## and grows by PAINT_GROW; the win card waits THEME_HOLD longer.
+const SKETCH_SIDE := 0.68
+const SKETCH_X := 0.3
+const TEXT_X := 0.12
+const SKETCH_DIM := 0.24
+const SKETCH_RIM := 0.62
+const PAINT_AT := 0.25
+const PAINT_STEP := 0.04
+const PAINT_TIME := 0.3
+const PAINT_GROW := 0.2
+const PAINT_PALE := 0.82
+const PAINT_PALE_SHADE := 0.12
+const THEME_HOLD := 0.9
+## Which night picture a band's order is for, the first the phone holds.
+const THEMED_SIZES := [[10, 12], [10, 12], [12, 10], [12, 10]]
 
 ## Built silent and deaf for the tutorial's page.
 var demo := false
@@ -176,6 +199,15 @@ var _units_w := -1.0
 var _still: ArrayMesh
 var _still_key := ""
 var fx: Node
+## The day's thing ({id, name, rows}) when the order is for it, {} on a
+## plain day; when its beads began to pour on (INF before), and the meshes
+## of its sketch and of its beads, kept until the next replaces them.
+var _theme: Dictionary = {}
+var _paint_at := INF
+var _sketch_shown: ArrayMesh
+var _sketch_key := ""
+var _paint_shown: ArrayMesh
+var _paint_done := false
 
 func puzzle_id() -> String: return "market"
 func title() -> String: return "Market Sums"
@@ -229,12 +261,28 @@ func _ready() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_band = clampi(difficulty, 0, 3)
 	_st.deal(rng, _band)
+	_theme = _night_picture(_band)
 	_fresh()
 	_enter_at = _t
 	_cue("enter")
 
+## The night's thing the band's order is for: only a daily dealt from its
+## day, never New, never the tutorial's stall. The deal never reads it.
+func _night_picture(band: int) -> Dictionary:
+	if demo or bank_step != 0 or daily_key == 0:
+		return {}
+	for side in THEMED_SIZES[band]:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			return pic
+	return {}
+
 ## Every crate as dealt, nothing picked, nothing moving.
 func _fresh() -> void:
+	_paint_at = INF
+	_paint_shown = null
+	_paint_done = false
+	_sketch_key = ""
 	_shown_v.clear()
 	_pop_at.clear()
 	_refused_at.clear()
@@ -263,7 +311,8 @@ func day_dict() -> Dictionary:
 	if _st.numbers.is_empty():
 		return {}
 	return {
-		"source": "generator", "kind": "text",
+		"source": "theme" if themed() else "generator", "kind": "text",
+		"theme": String(_theme.get("id", "")),
 		"payload": {"numbers": _st.numbers.duplicate(), "target": _st.target},
 		"solution": {"steps": _st.answer.duplicate(true)},
 		"metrics": {"par": _st.par, "target": _st.target},
@@ -405,6 +454,8 @@ func _after_win(after: float) -> void:
 			return
 		_settle()
 		_cue("solved")
+		if themed():
+			_theme_win()
 		if not demo and fx != null:
 			fx.confetti(Vector2(size.x * 0.5, _l("board_y")), 26, size.x * 0.7)
 			# the order filled in the fewest steps there are: the party
@@ -734,6 +785,10 @@ func _draw_order() -> void:
 	var s := float(_L.get("s", 1.0))
 	var at := Vector2(size.x * 0.5, _l("board_y"))
 	var bh := _l("bh")
+	if themed():
+		_draw_thing(at, bh)
+		# the words make room for the thing on the board's left
+		at.x += _l("bw") * TEXT_X
 	var font: Font = CozyTheme.display(700)
 	var big: Font = CozyTheme.display(800)
 	var label := tr("MK_ORDER")
@@ -752,7 +807,7 @@ func _draw_order() -> void:
 	draw_set_transform(Vector2.ZERO)
 	_draw_near(at, bh, s)
 	if _st.solved() and _filled_at > -INF:
-		var tick := at + Vector2(_l("bw") * 0.36, -bh * 0.18)
+		var tick := at + Vector2(_l("bw") * (0.36 - (TEXT_X if themed() else 0.0)), -bh * 0.18)
 		var pop := Motion.pop_in_scale(fe).x if fe < Motion.POP_IN and not Motion.reduce else 1.0
 		var r := 26.0 * s * pop
 		draw_circle(tick, r, Pal.LEAF)
@@ -771,6 +826,12 @@ func _draw_near(at: Vector2, bh: float, s: float) -> void:
 	var line: String = tr("MK_NEAREST") % [_st.slots[int(nb[0])], int(nb[1])]
 	var fs := roundi(NEAR_SIZE * s)
 	var lw := font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	if themed():
+		# beside the thing the line has the board's right part to itself
+		var room := (_l("bw") * (0.5 - TEXT_X) - 18.0 * s) * 2.0
+		if lw > room:
+			fs = maxi(12, floori(fs * room / lw))
+			lw = font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var warm: bool = float(nb[1]) <= maxf(2.0, WARM * float(_st.target))
 	var k := 1.0
 	var e := _t - _near_at
@@ -1032,7 +1093,7 @@ func _draw_strip(mid: Vector2, s: float) -> void:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return WIN_HOLD
+	return WIN_HOLD + (THEME_HOLD if themed() else 0.0)
 
 func skill_quality() -> float:
 	if _st.numbers.is_empty():
@@ -1051,6 +1112,8 @@ func flat_win() -> Dictionary:
 	else:
 		line = tr("MK_WIN_MORE") % _st.par
 	var made: String = (tr("MK_WIN_ONE") if _st.steps == 1 else tr("MK_WIN_N")) % [_st.target, _st.steps]
+	if themed():
+		return {"faces": [], "subtitle": tr("MK_WIN_THEME") % [String(_theme.name), line]}
 	return {"faces": [], "subtitle": made + " " + line}
 
 func completion_record() -> Dictionary:
@@ -1068,5 +1131,120 @@ func restore_completed_board() -> void:
 	_say = ""
 	_filled_at = -10.0
 	_won_at = -INF
+	if themed():
+		# a reopened themed day shows the order's thing in its beads
+		_paint_at = _t - 10.0
 	_rate(false)
 	queue_redraw()
+
+# --- the daily theme (2026-11-06) ---
+
+func themed() -> bool:
+	return not _theme.is_empty()
+
+## The order filled on a themed day: the sketch takes the thing's beads from
+## the bottom row up, and the theme cue rings as it starts. Under reduce
+## motion the picture is simply there.
+func _theme_win() -> void:
+	if Motion.reduce:
+		_paint_at = _t - 10.0
+		_cue("theme")
+		return
+	_paint_at = _t + PAINT_AT
+	var tree := get_tree()
+	if tree == null:
+		return
+	tree.create_timer(PAINT_AT + PAINT_STEP, false).timeout.connect(func() -> void:
+		if is_inside_tree():
+			_cue("theme"))
+	var rows: int = (_theme.rows as Array).size()
+	tree.create_timer(PAINT_AT + PAINT_STEP * rows + PAINT_TIME, false).timeout.connect(func() -> void:
+		if is_inside_tree() and fx != null and not _L.is_empty():
+			fx.sparkle(_thing_centre(), Pal.SUN))
+
+## How far row `r` (of `rows`) has taken its beads, 0 to 1; bottom row first.
+func _paint_level(r: int, rows: int) -> float:
+	if _paint_at == INF:
+		return 0.0
+	var k := (_t - _paint_at - PAINT_STEP * float(rows - 1 - r)) / PAINT_TIME
+	return clampf(k, 0.0, 1.0)
+
+## The middle of the thing on the order board.
+func _thing_centre() -> Vector2:
+	return Vector2(size.x * 0.5 - _l("bw") * SKETCH_X, _l("board_y"))
+
+## The day's thing on the order board: a chalk sketch of it (every bead a
+## faint dab, the ones on its edge brighter) while the order waits, and its
+## own beads once filled, row by row, the whole growing a little. Two meshes,
+## each kept until the next replaces it.
+func _draw_thing(at: Vector2, bh: float) -> void:
+	var rows: Array = _theme.rows
+	var n := rows.size()
+	if n == 0:
+		return
+	var side := bh * SKETCH_SIDE
+	var all := _paint_at != INF and _t - _paint_at >= PAINT_STEP * n + PAINT_TIME
+	var grow := 1.0
+	if _paint_at != INF:
+		var e := clampf((_t - _paint_at) / (PAINT_STEP * n + PAINT_TIME), 0.0, 1.0)
+		grow = 1.0 + PAINT_GROW * (Motion.back_out(e) if not Motion.reduce else 1.0)
+	var cell := side / float(n)
+	var centre := Vector2(at.x - _l("bw") * SKETCH_X, at.y)
+	var xf := Transform2D(0.0, Vector2.ONE * grow, 0.0, centre)
+	var o := -Vector2.ONE * side * 0.5
+	if not all:
+		# the sketch is drawn until every bead is down, so a row's chalk
+		# shows under it until it pours on
+		var key := "%s:%d:%d" % [String(_theme.get("id", "")), roundi(side), n]
+		if key != _sketch_key or _sketch_shown == null:
+			_sketch_key = key
+			var b := Face.Builder.new()
+			for r in n:
+				var row: String = rows[r]
+				for c in row.length():
+					if row[c] == ".":
+						continue
+					var edge := _is_bare(rows, c - 1, r) or _is_bare(rows, c + 1, r) \
+						or _is_bare(rows, c, r - 1) or _is_bare(rows, c, r + 1)
+					var a := SKETCH_RIM if edge else SKETCH_DIM
+					var pad := cell * 0.12
+					b.fan(Face.Builder.round_rect(o + Vector2(c, r) * cell + Vector2.ONE * pad,
+						Vector2.ONE * (cell - 2.0 * pad), cell * 0.25), Color(Art.CHALK_INK, a))
+			_sketch_shown = b.mesh()
+		var fade := 1.0
+		if _paint_at != INF:
+			fade = 1.0 - clampf((_t - _paint_at) / (PAINT_STEP * n + PAINT_TIME), 0.0, 1.0) * 0.6
+		draw_mesh(_sketch_shown, null, xf, Color(1, 1, 1, fade))
+	if _paint_at == INF or _t < _paint_at:
+		return
+	if _paint_shown == null or not _paint_done:
+		var letters: Dictionary = ThemedPictures.letters()
+		var b := Face.Builder.new()
+		for r in n:
+			var k := 1.0 if Motion.reduce else _paint_level(r, n)
+			if k <= 0.0:
+				continue
+			var row: String = rows[r]
+			for c in row.length():
+				if row[c] == ".":
+					continue
+				var bead = Pal.PG_BEADS.get(String(letters.get(row[c], "")))
+				if bead == null:
+					continue
+				var face: Color = bead
+				if face.get_luminance() > PAINT_PALE:
+					face = face.darkened(PAINT_PALE_SHADE)
+				var sz := Vector2.ONE * cell * 0.92 * lerpf(0.4, 1.0, Motion.back_out(k))
+				var lo := o + (Vector2(c, r) + Vector2.ONE * 0.5) * cell - sz * 0.5
+				b.fan(Face.Builder.round_rect(lo + Vector2(0.0, cell * 0.06), sz, cell * 0.2), Color(face.darkened(0.3), k))
+				b.fan(Face.Builder.round_rect(lo, sz, cell * 0.2), Color(face, k))
+		_paint_shown = b.mesh() if not b.verts.is_empty() else null
+		_paint_done = all
+	if _paint_shown != null:
+		draw_mesh(_paint_shown, null, xf)
+
+func _is_bare(rows: Array, c: int, r: int) -> bool:
+	if r < 0 or r >= rows.size():
+		return true
+	var row: String = rows[r]
+	return c < 0 or c >= row.length() or row[c] == "."

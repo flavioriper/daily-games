@@ -92,3 +92,30 @@
     Mine, the user's to call: tags on every band, stars that move during
     play, Every Crate dropped, Undo on Insane. Not seen on a phone, not
     heard.
+- **The daily theme, 2026-11-06** (roadmap wave 5, B; the user: "start
+  integrating the daily theme into all games, get the next on the list").
+  The roadmap's row was a label ("24 lanterns"); a name in a sentence needs
+  plurals and genders in pt/es, so the order is for a *picture* instead.
+  On a daily whose night pictures this phone holds (`_night_picture`: never
+  New, never `demo`; Easy/Medium the 10 first, Hard/Insane the 12 first,
+  `THEMED_SIZES`), the order board carries the day's thing as a chalk sketch
+  on its left (`SKETCH_SIDE` 0.68 of its height, every bead a faint dab,
+  the edge ones brighter) and its words move `TEXT_X` right (the nearest
+  line shrinks to fit beside it). The deal never reads the theme: numbers,
+  par and stars are the plain day's, so nothing needed measuring.
+  - **The win**: with the solve's flourish the sketch takes the picture's
+    beads row by row from the bottom (`PAINT_AT` 0.25, a row every 0.04,
+    each bead swelling in over 0.3), the chalk fades, the whole grows 0.2,
+    the `theme` cue rings (the boards' wrap climbing, -15) and a sun sparkle
+    lands as the last row does. `win_delay` + `THEME_HOLD` 0.9 so the
+    picture is whole before the card (which covers the board).
+    `MK_WIN_THEME` "Today's order: %s. %s" names it with the fewest line. A
+    reopened day shows it painted. `day_dict` says `source: theme` and the
+    thing's id.
+  - Two meshes (`_sketch_shown`, keyed by id and size; `_paint_shown`, kept
+    once whole). Draw calls unchanged in play (97-102), 157-160 at the win.
+  - `_shot_market.gd ... theme` (or `night=YYYYMMDD`) hands in the newest
+    cached night's thing and adds `won_paint`/`won_whole`. The harness boots
+    `world/main.tscn`, so its backend reads this Mac's cache: a plain run
+    there is already themed on a cached day (it showed Towel on 20261106).
+  - Owed: phone, ear, pt/es read by a speaker, reduce motion seen.
