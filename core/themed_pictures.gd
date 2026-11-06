@@ -207,6 +207,86 @@ static func words(date_key: int, board: String):
 	var got = all[board].get(Locale.current())
 	return got if typeof(got) == typeof(empty) else empty
 
+## The day's theme words in the player's language, folded as the word
+## boards fold (Locale.fold), the strongest first, each once: the night's own
+## list for the bank boards (`words.theme`, since 2026-11-06, a deploy owed),
+## then Hidden Word's and Word Trail's picks, then the words of the
+## pictures' names (three letters up, never a little word like "de"). The
+## bank boards (Biscuit Tin, Cross Stitch, Padlock, Stepping Stones, Garden
+## Fence) deal the bank entry that holds one (`bank_pick`); Hidden Word's
+## Medium and Hard take the first their slice holds.
+const POOL_STOP := ["the", "and", "with", "del", "las", "los", "con", "das", "dos", "com", "por", "para", "una", "uma"]
+static func theme_pool(date_key: int) -> Array:
+	var out: Array = []
+	if date_key == 0 or not Backend.started():
+		return out
+	var doc: Dictionary = Backend.cached_day(GAME, date_key)
+	if int(doc.get("v", 0)) != 1:
+		return out
+	var lang := Locale.current()
+	var raw: Array = []
+	var all = doc.get("words")
+	if all is Dictionary:
+		for board in ["theme", "hiddenword"]:
+			var got = all.get(board, {}).get(lang) if all.get(board) is Dictionary else null
+			if got is Array:
+				raw.append_array(got)
+		var trail = all.get("wordtrail", {}).get(lang) if all.get("wordtrail") is Dictionary else null
+		if trail is Dictionary:
+			var lens: Array = (trail as Dictionary).keys()
+			lens.sort_custom(func(a, b) -> bool: return int(a) > int(b))
+			for k in lens:
+				if trail[k] is Array:
+					raw.append_array(trail[k])
+	for t: Dictionary in names(date_key):
+		raw.append_array(String(t.get(lang, "")).split(" ", false))
+	for w in raw:
+		if not w is String:
+			continue
+		var f := Locale.fold(String(w).strip_edges())
+		if f.length() < 3 or f.length() > 16 or POOL_STOP.has(f) or out.has(f):
+			continue
+		var letters := true
+		for ch in f:
+			if not Locale.alphabet().contains(ch):
+				letters = false
+				break
+		if letters:
+			out.append(f)
+	return out
+
+## The bank entry a themed daily deals: of `boards` (a bank's entries), the
+## ones holding the strongest word of `pool` (theme_pool) that any holds,
+## `words_of` reading an entry's words (folded or not: they are folded
+## here); one of them by the day, so two phones agree. {} when none holds
+## one, and the board deals its bank's turn as ever. {index, word}: the
+## word as `pool` has it (folded).
+static func bank_pick(boards: Array, pool: Array, date_key: int, words_of: Callable) -> Dictionary:
+	if boards.is_empty() or pool.is_empty():
+		return {}
+	var rank := {}
+	for r in pool.size():
+		rank[pool[r]] = r
+	var best := pool.size()
+	var at: Array = []
+	for i in boards.size():
+		if not boards[i] is Dictionary:
+			continue
+		var mine := pool.size()
+		for w in words_of.call(boards[i]):
+			var f := Locale.fold(String(w))
+			if rank.has(f):
+				mine = mini(mine, int(rank[f]))
+		if mine < best:
+			best = mine
+			at = [i]
+		elif mine == best and mine < pool.size():
+			at.append(i)
+	if at.is_empty():
+		return {}
+	var pick: int = at[Daily.fnv1a("theme|%d" % date_key) % at.size()]
+	return {"index": pick, "word": pool[best]}
+
 ## How Big?'s things from the night for the daily of `date_key`, or []:
 ## the day's new ones and a few of the pool's (server/functions/src/
 ## things.ts), each a row of content/how_big.json's kind with its shape in

@@ -20,6 +20,14 @@ import trailEs from "./word_lists/word_trail.es.json";
  * Hidden Word takes one, on Easy only: a theme known gives a harder answer
  * away. Word Trail takes one a path wherever a length has one.
  *
+ * `theme` (2026-11-06) is a longer list, the theme's words free of any
+ * list: the bank boards (Biscuit Tin, Cross Stitch, Padlock, Stepping
+ * Stones, Garden Fence) deal the banked puzzle that holds one, and Hidden
+ * Word's Medium and Hard the first their slice holds
+ * (core/themed_pictures.gd `theme_pool`, `bank_pick`). The phone only ever
+ * matches them against what it already deals, so a word nobody holds costs
+ * nothing.
+ *
  * The lists are copied out of content/ by `npm run build`
  * (src/word_lists/, git-ignored): they live once.
  */
@@ -31,6 +39,8 @@ export interface Words {
   hiddenword: Record<Lang, string[]>;
   /** Word Trail's, by length ("3" to "8"), the best first. */
   wordtrail: Record<Lang, Record<string, string[]>>;
+  /** The theme's words free of any list, the strongest first. */
+  theme: Record<Lang, string[]>;
 }
 
 const HIDDEN: Record<Lang, string[]> = {en: hiddenEn.answers, pt: hiddenPt.answers, es: hiddenEs.answers};
@@ -38,6 +48,9 @@ const TRAIL: Record<Lang, Record<string, string[]>> = {en: trailEn.words, pt: tr
 /** At most this many kept a list: a board takes the first. */
 const HIDDEN_MAX = 4;
 const TRAIL_MAX = 3;
+const THEME_MAX = 40;
+/** A theme word: one word of letters (accents too), three to twelve. */
+const THEME_WORD = /^\p{L}{3,12}$/u;
 
 const NAMES: Record<Lang, string> = {en: "English", pt: "Portuguese (Brazil)", es: "Spanish"};
 
@@ -46,15 +59,17 @@ const SYSTEM = `You pick words for a cosy daily word game played by all ages. Th
 You are given the theme and two lists of words in one language. Pick only words that are in the lists, spelt exactly as they are there, accents and all. A word belongs to the theme when someone told the theme would think of it at once: a thing you would see, hold, hear or do there. A word that merely could be there, or belongs to every theme (day, sun, good, home), does not.
 
 - "hidden": up to ${HIDDEN_MAX} words out of the first list that belong to the theme, the one that belongs most first. None is better than a weak one.
-- "trail": up to ${TRAIL_MAX} words of each length out of the second list that belong to the theme, the one that belongs most first, as one list.`;
+- "trail": up to ${TRAIL_MAX} words of each length out of the second list that belong to the theme, the one that belongs most first, as one list.
+- "theme": up to ${THEME_MAX} common single words of three to twelve letters in the language, from any list or none, that belong to the theme, the one that belongs most first: things there, what they are made of, what is done there. Lowercase, spelt as a dictionary spells them, accents and all; no names, no plurals unless the thing is always plural, nothing rude.`;
 
 const SCHEMA = {
   type: "object",
   properties: {
     hidden: {type: "array", items: {type: "string"}},
     trail: {type: "array", items: {type: "string"}},
+    theme: {type: "array", items: {type: "string"}},
   },
-  required: ["hidden", "trail"],
+  required: ["hidden", "trail", "theme"],
   additionalProperties: false,
 };
 
@@ -95,10 +110,22 @@ function byLength(named: unknown, theme: Theme, lang: Lang): Record<string, stri
   return out;
 }
 
+/** The theme words of `named` worth sending: one word of letters each, no
+ *  two alike, the theme's own words after them, THEME_MAX at most. */
+function themeWords(named: unknown, theme: Theme, lang: Lang): string[] {
+  const out: string[] = [];
+  for (const w of [...(Array.isArray(named) ? named : []), ...theme.words[lang]]) {
+    const word = typeof w === "string" ? w.trim().toLowerCase() : "";
+    if (THEME_WORD.test(word) && !out.includes(word)) out.push(word);
+    if (out.length >= THEME_MAX) break;
+  }
+  return out;
+}
+
 /** What a day's words came to in one language: for the dashboard. */
 export interface WordsTry {
   lang: Lang;
-  named?: {hidden: unknown; trail: unknown};
+  named?: {hidden: unknown; trail: unknown; theme?: unknown};
   error?: string;
 }
 
@@ -106,16 +133,17 @@ export interface WordsTry {
  *  language whose ask fails keeps only the theme's own words the lists
  *  hold. */
 export async function makeWords(theme: Theme): Promise<{words: Words | null; tries: WordsTry[]}> {
-  const words: Words = {hiddenword: {en: [], pt: [], es: []}, wordtrail: {en: {}, pt: {}, es: {}}};
+  const words: Words = {hiddenword: {en: [], pt: [], es: []}, wordtrail: {en: {}, pt: {}, es: {}},
+    theme: {en: [], pt: [], es: []}};
   const tries: WordsTry[] = [];
   let any = false;
   for (const lang of LANGS) {
     const t: WordsTry = {lang};
     tries.push(t);
-    let named: {hidden: unknown; trail: unknown} = {hidden: [], trail: []};
+    let named: {hidden: unknown; trail: unknown; theme?: unknown} = {hidden: [], trail: [], theme: []};
     if (available()) {
       try {
-        named = await ask<{hidden: string[]; trail: string[]}>({system: SYSTEM, prompt: prompt(theme, lang), schema: SCHEMA});
+        named = await ask<{hidden: string[]; trail: string[]; theme: string[]}>({system: SYSTEM, prompt: prompt(theme, lang), schema: SCHEMA});
         t.named = named;
       } catch (e) {
         t.error = String(e).slice(0, 300);
@@ -125,7 +153,9 @@ export async function makeWords(theme: Theme): Promise<{words: Words | null; tri
     const hidden = Array.isArray(named.hidden) ? named.hidden : [];
     words.hiddenword[lang] = kept([...hidden, ...theme.words[lang]], HIDDEN[lang], HIDDEN_MAX);
     words.wordtrail[lang] = byLength(named.trail, theme, lang);
-    any ||= words.hiddenword[lang].length > 0 || Object.keys(words.wordtrail[lang]).length > 0;
+    words.theme[lang] = themeWords(named.theme, theme, lang);
+    any ||= words.hiddenword[lang].length > 0 || Object.keys(words.wordtrail[lang]).length > 0 ||
+      words.theme[lang].length > 0;
   }
   return {words: any ? words : null, tries};
 }
