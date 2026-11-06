@@ -115,8 +115,10 @@ static func _x(b, at: Vector2, r: float, w: float, colour: Color) -> void:
 	b.stroke(PackedVector2Array([at + Vector2(r, -r), at + Vector2(-r, r)]), w, colour)
 
 ## A word's gold border, a running stitch along `pts` (a closed ring),
-## sewn as far as `upto` (0..1 of its length).
-static func border(b, pts: PackedVector2Array, w: float, upto := 1.0, dash := 16.0) -> Vector2:
+## sewn as far as `upto` (0..1 of its length). `colour`, `from_k` and
+## `len_k` (shares of a dash) lay a second thread in the first's gaps: the
+## day's theme word is sewn round in gold and rose.
+static func border(b, pts: PackedVector2Array, w: float, upto := 1.0, dash := 16.0, colour := GOLD, from_k := 0.0, len_k := 0.6) -> Vector2:
 	var total := 0.0
 	var n := pts.size()
 	for k in n:
@@ -130,10 +132,11 @@ static func border(b, pts: PackedVector2Array, w: float, upto := 1.0, dash := 16
 		var seg := p0.distance_to(p1)
 		var d := 0.0
 		while d < seg and run + d < reach:
-			var e := minf(seg, d + dash * 0.6)
+			var d0 := d + dash * from_k
+			var e := minf(seg, d0 + dash * len_k)
 			e = minf(e, reach - run)
-			if e > d:
-				b.stroke(PackedVector2Array([p0.lerp(p1, d / seg), p0.lerp(p1, e / seg)]), w, GOLD)
+			if e > d0:
+				b.stroke(PackedVector2Array([p0.lerp(p1, d0 / seg), p0.lerp(p1, e / seg)]), w, colour)
 			tip = p0.lerp(p1, minf(1.0, (d + dash) / seg))
 			d += dash
 		run += seg
@@ -141,6 +144,33 @@ static func border(b, pts: PackedVector2Array, w: float, upto := 1.0, dash := 16
 			tip = p0.lerp(p1, clampf((reach - (run - seg)) / seg, 0.0, 1.0))
 			break
 	return tip
+
+## The day's theme word's sun, a little round of linen pinned at the word's
+## start with a sun cross-stitched on it, `r` its linen's half width.
+## `bloom` 0 is the knot that only says which line is the day's (a gold
+## French knot with a thread's tail, no rays); 1 the whole sun, eight rays
+## of X stitches round a gold eye, sewn once the word is stitched.
+static func sun(b, at: Vector2, r: float, bloom: float) -> void:
+	var k := clampf(bloom, 0.0, 1.0)
+	if k <= 0.0:
+		var kr := r * 0.3
+		b.stroke(PackedVector2Array([at + Vector2(kr * 0.6, kr * 0.4), at + Vector2(kr * 1.6, kr * 1.5), at + Vector2(kr * 2.3, kr * 1.3)]), maxf(1.2, kr * 0.28), GOLD)
+		b.disc(at + Vector2(0.0, kr * 0.18), kr * 1.05, Color(FRAME_DEEP, 0.8))
+		b.disc(at, kr, GOLD)
+		b.disc(at - Vector2(kr, kr) * 0.3, kr * 0.38, GOLD_LIT)
+		return
+	var rr := r * lerpf(0.45, 1.0, k)
+	b.disc(at + Vector2(0.0, rr * 0.12), rr * 1.06, Color(FRAME_DEEP, 0.85))
+	b.disc(at, rr, LINEN)
+	b.stroke(Face.Builder.ring(at, rr * 0.86, rr * 0.86), maxf(1.0, rr * 0.05), Color(WEAVE, 0.9), true)
+	var w := maxf(1.2, rr * 0.11)
+	for n in 8:
+		var a := n * TAU / 8.0 - PI * 0.5
+		var len := rr * (0.62 if n % 2 == 0 else 0.52) * k
+		_x(b, at + Vector2(cos(a), sin(a)) * len, rr * 0.11, w, Pal.SUN if n % 2 == 0 else ROSE)
+	b.disc(at, rr * 0.34, GOLD)
+	for p in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1), Vector2.ZERO]:
+		_x(b, at + p * rr * 0.13, rr * 0.07, maxf(1.0, rr * 0.06), GOLD_LIT)
 
 ## The needle, its eye at the back, pointing along `dir`, `l` long, a tail
 ## of gold thread from its eye.

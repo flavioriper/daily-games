@@ -29,6 +29,7 @@ const HINTS := [3, 2, 1, 1]
 const MORE := 3
 ## Stars: three for the fewest swaps, two within STAR_TWO more, one after.
 const STAR_TWO := 2
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 ## Should a bank be missing, a sampler every language can spell (folded).
 const SPARE_DAY := {
 	"words": ["blend", "otter", "diary", "blood", "extra", "dirty"],
@@ -61,15 +62,64 @@ var done_words: Array[bool] = [false, false, false, false, false, false]
 var to_go := 0
 var _memo := {}
 
-func deal(_rng: RandomNumberGenerator, the_band: int, bank_step := 0) -> void:
+## The day's theme word's slot (0..5) and the word as written, when the
+## sampler was dealt for the day's theme (`deal` with a pool); -1 and "".
+var theme_slot := -1
+var theme_word := ""
+
+## Deals the band's sampler for the day. `pool` (ThemedPictures.theme_pool,
+## folded, strongest first) and `date_key`: a themed daily deals the banked
+## sampler holding the strongest theme word it can, by
+## ThemedPictures.bank_pick; with no hit, or no pool, the bank's turn as
+## ever. Only a word the player must stitch counts: one Easy deals whole
+## (its two given words) would never be stitched, so it is not looked for.
+func deal(_rng: RandomNumberGenerator, the_band: int, bank_step := 0, pool: Array = [], date_key := 0) -> void:
 	band = clampi(the_band, 0, 3)
+	theme_slot = -1
+	theme_word = ""
+	if not pool.is_empty() and bank_step == 0:
+		var boards: Array = InsaneBank.boards(BANKS[band])
+		var hit: Dictionary = ThemedPictures.bank_pick(boards, pool, date_key, _open_words)
+		if not hit.is_empty():
+			load_day(boards[int(hit.index)])
+			for s in words.size():
+				if Locale.fold(words[s]) == String(hit.word):
+					theme_slot = s
+					theme_word = shown[s] if s < shown.size() else words[s]
+					break
+			if theme_slot >= 0:
+				return
 	var day: Dictionary = InsaneBank.pick(BANKS[band], bank_step)
 	if day.is_empty():
 		push_error("Cross Stitch: no samplers in %s" % BANKS[band])
 		day = SPARE_DAY
 	load_day(day)
 
+## A banked sampler's words that are not dealt whole (for bank_pick).
+static func _open_words(day: Dictionary) -> Array:
+	var out: Array = []
+	var ws: Array = day.get("words", [])
+	var st := String(day.get("start", ""))
+	for s in mini(6, ws.size()):
+		var w := String(ws[s])
+		var cs := cells_of(s)
+		var whole := st.length() == 25 and w.length() == 5
+		if whole:
+			for k in 5:
+				if st[cs[k]] != w[k]:
+					whole = false
+					break
+		if not whole:
+			out.append(w)
+	return out
+
+## The theme word is stitched whole.
+func theme_done() -> bool:
+	return theme_slot >= 0 and done_words[theme_slot]
+
 func load_day(day: Dictionary) -> void:
+	theme_slot = -1
+	theme_word = ""
 	words.clear()
 	shown.clear()
 	for w in day.get("words", []):

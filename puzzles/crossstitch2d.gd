@@ -46,6 +46,7 @@ const FLAT_HOST := "res://ui/flat/flat_host.gd"
 const OUT_OF_ROWS := "res://ui/hud/out_of_rows.gd"
 
 const Mark = State.Mark
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 
 const HAPTICS := {
 	"pick": Haptics.TICK,
@@ -61,6 +62,7 @@ const HAPTICS := {
 	"reveal": Haptics.BUMP,
 	"hint": Haptics.GOOD,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 ## The screen the board was drawn on; everything scales with the width.
@@ -101,6 +103,20 @@ const CARD_AFTER := 1.1
 ## The win's wave across the patches and how long the board holds it.
 const WAVE_STEP := 0.045
 const WIN_HOLD := 1.6
+## The daily theme (2026-11-06): the theme word's line wears a sun at its
+## start (a knot until it is stitched) and its border is sewn in gold and
+## rose. On the win, when the word was stitched before the last swap, its
+## five patches hop again one by one THEME_AT after the wave starts, the
+## sun sparkling; the card waits THEME_HOLD longer on a themed day.
+const THEME_AT := 0.9
+const THEME_STEP := 0.07
+const THEME_HOLD := 0.7
+## The sun's linen as a share of a patch's side.
+const SUN_K := 0.34
+
+## The day's theme words a harness hands the deal in place of the night's
+## (tests/_shot_crossstitch.gd `theme`); empty in the game.
+static var theme_pool_override: Array = []
 
 var demo := false
 var demo_day := {}
@@ -116,6 +132,8 @@ var _t := 0.0
 var _enter_at := 0.0
 var _won_at := -INF
 var _droop_at := -INF
+## The themed win's hop along the theme word (INF: none).
+var _theme_at := INF
 
 ## What each cell shows until its new mark lands, and when it lands.
 var _old_marks: Array[int] = []
@@ -236,12 +254,24 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 		_st.band = _band
 		_st.load_day(demo_day)
 	else:
-		_st.deal(rng, _band, bank_step)
+		_st.deal(rng, _band, bank_step, _theme_pool(), daily_key)
 	_shown = false
 	_bought = false
 	_fresh()
 	_enter_at = _t
 	_cue("enter")
+
+## The day's theme words for the deal: only a daily dealt from its day,
+## never New, never the tutorial's sampler.
+func _theme_pool() -> Array:
+	if demo or bank_step != 0 or daily_key == 0:
+		return []
+	if not theme_pool_override.is_empty():
+		return theme_pool_override
+	return ThemedPictures.theme_pool(daily_key)
+
+func themed() -> bool:
+	return _st.theme_slot >= 0
 
 ## Every patch as dealt, nothing moving.
 func _fresh() -> void:
@@ -264,6 +294,7 @@ func _fresh() -> void:
 	_warned = false
 	_borders_key = ""
 	_droop_at = -INF
+	_theme_at = INF
 	out_of_hearts = false
 	_stars.clear(_st.stars())
 	_relayout()
@@ -271,12 +302,15 @@ func _fresh() -> void:
 func day_dict() -> Dictionary:
 	if _st.words.is_empty():
 		return {}
-	return {
-		"source": "bank", "kind": "text",
+	var out := {
+		"source": "theme" if themed() else "bank", "kind": "text",
 		"payload": {"start": _st.start},
 		"solution": {"words": Array(_st.shown)},
 		"metrics": {"fewest": _st.fewest, "budget": _st.budget(), "loose": _st.loose()},
 	}
+	if themed():
+		out["theme"] = _st.theme_word
+	return out
 
 # --- the moves ---
 
@@ -358,6 +392,7 @@ func _try_swap(a: int, b: int, finger := Vector2.INF) -> void:
 
 func _do_swap(a: int, b: int, finger: Vector2, free: bool) -> void:
 	var before: Array[int] = _st.marks.duplicate()
+	var theme_before: bool = _st.theme_done()
 	var shown := _shown_marks()
 	var r: Dictionary = _st.swap(a, b, free)
 	if r.is_empty():
@@ -398,11 +433,13 @@ func _do_swap(a: int, b: int, finger: Vector2, free: bool) -> void:
 			_cue("word", 1.0 + 0.04 * _done_count())
 			if fx != null:
 				fx.sparkle(_word_mid(int(words[0])), Art.GOLD)
-			if not _st.solved():
+			if words.has(_st.theme_slot):
+				_theme_sewn(_t + words.find(_st.theme_slot) * 0.2)
+			elif not _st.solved():
 				_say_now("CS_SAY_WORD", _st.shown[int(words[0])].to_upper())
 		_rate(true))
 	if _st.solved():
-		_phase_solved(land)
+		_phase_solved(land, theme_before)
 	elif _st.out():
 		_run_out(land)
 	elif not _st.reachable() and not _warned and not demo:
@@ -418,7 +455,10 @@ func _settle() -> void:
 		_swap.at = _t - SWAP_TIME
 	_back = {}
 
-func _phase_solved(land: float) -> void:
+## `theme_before`: the theme word was stitched before this last swap (its
+## sun already out), so the win hops along it again; stitched by this swap,
+## its sun coming out is the win's themed beat and the toast names it.
+func _phase_solved(land: float, theme_before := false) -> void:
 	check_solved()
 	if not is_done():
 		return
@@ -429,7 +469,27 @@ func _phase_solved(land: float) -> void:
 			fx.confetti(Vector2(size.x * 0.5, _l("grid_y")), 28, size.x * 0.7)
 		var perfect: bool = _st.used <= _st.fewest and hints_used == 0
 		_cue("party" if perfect else "confetti")
-		_say_now("CS_PERFECT" if _st.used <= _st.fewest else "CS_DONE"))
+		if not (themed() and not theme_before):
+			_say_now("CS_PERFECT" if _st.used <= _st.fewest else "CS_DONE"))
+	if themed() and theme_before:
+		_theme_at = _won_at + (THEME_AT if not Motion.reduce else 0.0)
+		_later(_theme_at, func() -> void:
+			_cue("theme", 1.06)
+			if fx != null:
+				fx.sparkle(_sun_pos(), Pal.SUN)
+			_say_now("CS_SAY_THEME", _st.theme_word.to_upper()))
+
+## The theme word has just been stitched whole, its border starting to sew
+## at `sew_at`: the toast names it, and as the needle ties off the sun comes
+## out on its linen with the `theme` cue and a sparkle.
+func _theme_sewn(sew_at: float) -> void:
+	_say_now("CS_SAY_THEME", _st.theme_word.to_upper())
+	var at := sew_at + (SEW_TIME if not Motion.reduce else 0.0)
+	_later(at, func() -> void:
+		_cue("theme")
+		if fx != null:
+			fx.sparkle(_sun_pos(), Pal.SUN)
+			fx.ring(_sun_pos(), _l("tile") * SUN_K * 1.3, Pal.SUN))
 
 func is_solved() -> bool:
 	return _st.solved() and not _shown
@@ -907,6 +967,12 @@ func _patch_xf(i: int) -> Transform2D:
 			var wave := _t - _won_at - (i / 5 + i % 5) * WAVE_STEP
 			if wave >= 0.0 and wave < 1.6:
 				at.y -= Motion.hop_lift(fmod(wave, 1.6), Motion.SOLVE_HOP * 2.4 * float(_L.u), Motion.SOLVE_TIME)
+			if _theme_at < INF and themed():
+				var tk := State.cells_of(_st.theme_slot).find(i)
+				if tk >= 0:
+					var th := _t - _theme_at - tk * THEME_STEP
+					if th >= 0.0 and th < Motion.SOLVE_TIME:
+						at.y -= Motion.hop_lift(th, Motion.SOLVE_HOP * 3.0 * float(_L.u), Motion.SOLVE_TIME)
 		if out_of_hearts and _t >= _droop_at and not _st.stitched(i):
 			var dr := clampf((_t - _droop_at - (i % 5) * 0.03) / DROOP_TIME, 0.0, 1.0)
 			at.y += dr * 10.0 * _s()
@@ -934,7 +1000,7 @@ func _draw_patch(i: int, xf: Transform2D, font: Font, fs: int, lifted: bool) -> 
 ## The gold running stitch round every word stitched whole, sewn by a
 ## needle as it is made. One mesh while nothing is being sewn.
 func _draw_borders() -> void:
-	var key := "%s:%d:%d" % [str(_st.done_words), roundi(_l("x0")), roundi(_l("y0") * 7.0 + _l("tile"))]
+	var key := "%s:%d:%d:%d" % [str(_st.done_words), roundi(_l("x0")), roundi(_l("y0") * 7.0 + _l("tile")), _st.theme_slot]
 	var sewing := not _sewing.is_empty() and not Motion.reduce
 	if key != _borders_key or sewing:
 		_borders_key = key
@@ -952,13 +1018,42 @@ func _draw_borders() -> void:
 			if upto <= 0.0:
 				continue
 			var tip: Vector2 = Art.border(b, _ring_of(s), w, upto, dash)
+			if s == _st.theme_slot:
+				# the theme word's second thread, rose in the gold's gaps
+				Art.border(b, _ring_of(s), w * 0.8, upto, dash, Art.ROSE, 0.62, 0.32)
 			if upto < 1.0:
 				tips.append(tip)
+		if themed():
+			Art.sun(b, _sun_pos(), _l("tile") * SUN_K, _sun_bloom())
 		for tip in tips:
 			Art.needle(b, tip, Vector2(1.0, -0.6), _l("tile") * 0.55)
 		_borders = b.mesh() if b.verts.size() > 0 else null
 	if _borders != null:
 		draw_mesh(_borders, null)
+
+## Where the theme word's sun is pinned: on the frame before the word's
+## first letter (left of an across word, above a down one).
+func _sun_pos() -> Vector2:
+	if not themed():
+		return Vector2.ZERO
+	var s: int = _st.theme_slot
+	var k := _l("tile") / TILE
+	var back := TILE * 0.5 + MARGIN + TILE * FRAME_K * 0.35
+	var dir := Vector2.LEFT if s < 3 else Vector2.UP
+	return _cell_pos(State.cells_of(s)[0]) + dir * back * k
+
+## How far the sun is out: 0 the knot while the word is open, rising to 1
+## over the end of its border's sewing.
+func _sun_bloom() -> float:
+	if not _st.theme_done():
+		return 0.0
+	if Motion.reduce:
+		return 1.0
+	for sw: Dictionary in _sewing:
+		if int(sw.slot) == _st.theme_slot:
+			var upto := clampf((_t - float(sw.at)) / SEW_TIME, 0.0, 1.0)
+			return clampf((upto - 0.55) / 0.45, 0.0, 1.0) if upto < 1.0 else 1.0
+	return 1.0
 
 ## The ring a word's border runs along: round its five patches, in the
 ## gap.
@@ -1003,7 +1098,7 @@ func _draw_say() -> void:
 	var text := tr(_say)
 	if _say_arg != "" and text.contains("%s"):
 		text = text % _say_arg
-	var good := _say in ["CS_SAY_WORD", "CS_PERFECT", "CS_DONE", "CS_SAY_MORE", "CS_READ"]
+	var good := _say in ["CS_SAY_WORD", "CS_SAY_THEME", "CS_PERFECT", "CS_DONE", "CS_SAY_MORE", "CS_READ"]
 	var fs := roundi(SAY_SIZE * (1.25 if good else 1.0) * _s())
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	if tw > size.x * 0.94:
@@ -1078,7 +1173,7 @@ var _pill_mesh: ArrayMesh
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return WIN_HOLD
+	return WIN_HOLD + (THEME_HOLD if themed() else 0.0)
 
 func skill_quality() -> float:
 	if _st.cells.is_empty() or _shown:
@@ -1096,6 +1191,9 @@ func flat_win() -> Dictionary:
 		line = tr("CS_WIN_PERFECT") % all
 	else:
 		line = tr("CS_WIN") % [all, _st.fewest]
+	if themed():
+		var word: String = _st.theme_word
+		return {"faces": [], "subtitle": tr("CS_WIN_THEME") % [word.left(1).to_upper() + word.substr(1), line]}
 	return {"faces": [], "subtitle": line}
 
 func completion_record() -> Dictionary:

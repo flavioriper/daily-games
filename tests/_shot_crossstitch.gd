@@ -7,7 +7,12 @@ extends SceneTree
 ## day reopened from its card, with the draw calls of each frame. `out`
 ## spends the swaps badly: the sag, the card, three more swaps, then Show
 ## the sampler. `tut` shoots a tutorial page played a while; `card` the
-## menu card beside Honeycomb's. Puts nothing in the player's save.
+## menu card beside Honeycomb's. `theme` hands the deal the fixture's
+## theme words (scratchpad theme_pool_fixture.json, or `pool=<path>`) in
+## place of the night's, so the day deals themed: the knot at rest, the
+## theme word sewn (`theme_sewing`, `theme`), the win and the reopened day
+## wear it. `lang=<pt|es>` plays it in that language. Puts nothing in the
+## player's save.
 
 var _menu: Node
 var _host: Node
@@ -21,6 +26,11 @@ var _out := false
 var _diag: Control
 var _at := 90
 var _sewn := false
+var _theme := false
+var _themed_shot := false
+var _won_theme := false
+var _lang := ""
+var _pool := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/34d2447a-148c-4075-8921-873314a4eae3/scratchpad/theme_pool_fixture.json"
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -36,6 +46,12 @@ func _initialize() -> void:
 			_step = 60
 		elif a == "out":
 			_out = true
+		elif a == "theme":
+			_theme = true
+		elif a.begins_with("pool="):
+			_pool = a.substr(5)
+		elif a.begins_with("lang="):
+			_lang = a.substr(5)
 		else:
 			_dir = a
 	var progress = load("res://core/progress.gd")
@@ -83,6 +99,20 @@ func _process(_delta: float) -> bool:
 			quit()
 			return true
 		return false
+	if _f == 4:
+		if _lang != "":
+			# the board's banks follow Locale.current(); never saved
+			Locale._current = _lang
+			TranslationServer.set_locale(_lang)
+		if _theme:
+			var doc = JSON.parse_string(FileAccess.get_file_as_string(_pool))
+			var pool: Array = []
+			for w in (doc.get(Locale.current(), []) if doc is Dictionary else []):
+				var f := Locale.fold(String(w))
+				if not pool.has(f):
+					pool.append(f)
+			load("res://puzzles/crossstitch2d.gd").theme_pool_override = pool
+			print("theme pool (%s): %d words" % [Locale.current(), pool.size()])
 	if _f == 5:
 		_menu._open_at(load("res://ui/registry.gd").find("crossstitch"), _band)
 		_host = _menu.get_child(_menu.get_child_count() - 1)
@@ -99,7 +129,7 @@ func _process(_delta: float) -> bool:
 		if _f == 7200:
 			_b = _host._puzzle
 			_shot("reopen")
-			print("reopen done=%s solved=%s shown=%s used=%d" % [_b.is_done(), _b.is_solved(), _b._shown, _b.state().used])
+			print("reopen done=%s solved=%s shown=%s used=%d themed=%s bloom=%.1f" % [_b.is_done(), _b.is_solved(), _b._shown, _b.state().used, _b.themed(), _b._sun_bloom()])
 			_finish()
 			return true
 		return false
@@ -110,6 +140,7 @@ func _process(_delta: float) -> bool:
 		0:
 			_shot("rest")
 			print("words %s fewest %d budget %d marks %s" % [st.words, st.fewest, st.budget(), st.marks])
+			print("theme slot=%d word=%s day=%s" % [st.theme_slot, st.theme_word, _b.day_dict().get("source")])
 			if _out:
 				_step = 20
 				_f = 20000
@@ -154,7 +185,12 @@ func _process(_delta: float) -> bool:
 				var done: int = _b._done_count()
 				var h: Vector2i = st.hint_swap()
 				_b.demo_swap(h.x, h.y)
-				if not _sewn and _b._done_count() > done:
+				if _theme and not _themed_shot and st.theme_done():
+					_themed_shot = true
+					_sewn = true
+					_step = 8
+					_f = 8000
+				elif not _sewn and _b._done_count() > done:
 					_sewn = true
 					_step = 4
 					_f = 4000
@@ -165,12 +201,24 @@ func _process(_delta: float) -> bool:
 				_shot("sewn")
 				_step = 3
 				_f = 3000
+		8:
+			if _f == 8040:
+				_shot("theme_sewing")
+			if _f == 8075:
+				_shot("theme")
+				print("theme sewn: say=%s bloom=%.2f solved=%s" % [_b._say, _b._sun_bloom(), _b.is_done()])
+				_step = 6 if _b.is_done() else 3
+				_f = 6000 if _b.is_done() else 3000
 		6:
 			if _f == 6012:
 				_shot("won_early")
+			if _theme and not _won_theme and _b._theme_at < INF and _b._t > _b._theme_at + 0.15:
+				_won_theme = true
+				_shot("won_theme")
 			if _f == 6240:
 				_shot("won")
 				print("won used=%d fewest=%d stars=%d quality=%.2f" % [st.used, st.fewest, st.stars(), _b.skill_quality()])
+				print("win subtitle: %s | delay %.2f | day %s" % [_b.flat_win().subtitle, _b.win_delay(), JSON.stringify({"source": _b.day_dict().source, "theme": _b.day_dict().get("theme", "")})])
 				print(_b.share_glyphs())
 				_host.closed.emit()
 				_step = 7
@@ -182,7 +230,7 @@ func _process(_delta: float) -> bool:
 			if _f == 7200:
 				_b = _host._puzzle
 				_shot("reopen")
-				print("reopen done=%s solved=%s shown=%s used=%d" % [_b.is_done(), _b.is_solved(), _b._shown, _b.state().used])
+				print("reopen done=%s solved=%s shown=%s used=%d themed=%s bloom=%.1f" % [_b.is_done(), _b.is_solved(), _b._shown, _b.state().used, _b.themed(), _b._sun_bloom()])
 				_finish()
 				return true
 		20:
