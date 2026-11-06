@@ -41,6 +41,7 @@ const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
 const FlatTopBar = preload("res://ui/flat/flat_top_bar.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
 
 const HAPTICS := {
@@ -55,6 +56,7 @@ const HAPTICS := {
 	"star": Haptics.GOOD,
 	"hint": Haptics.GOOD,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 ## The screen the board was drawn on; everything scales with the width.
@@ -104,6 +106,22 @@ const TO_LID := 0.5
 ## The crumbs swept off on the solve, and the win's hold.
 const SWEEP := 0.45
 const WIN_HOLD := 1.8
+
+## The daily theme (2026-11-06): on a daily dealt from its day the tin is
+## the band's banked tin holding the strongest of the day's theme words
+## (ThemedPictures.theme_pool / bank_pick), one of its biscuits by
+## preference, else any word it credits. A little paper tag with a sun
+## hangs on the lid's lower rim from the start, never the word; when the
+## word is made the tag opens to name it (popping in over TAG_POP), the
+## theme cue rings THEME_CUE after the word's own, a sparkle, and the say
+## line reads "Today's word". A theme biscuit wears a gold ring on the lid.
+## A theme word missed by the solve is named on the tag at the win, quietly;
+## the win card waits THEME_HOLD longer when the win carries either beat.
+const TAG_H := 54.0
+const TAG_FONT := 32
+const TAG_POP := 0.35
+const THEME_CUE := 0.14
+const THEME_HOLD := 0.6
 
 var demo := false
 var demo_day := {}
@@ -168,7 +186,21 @@ var _reading_mesh: ArrayMesh
 var _bake_mesh: ArrayMesh
 var _bake_key := ""
 var _pill_mesh: ArrayMesh
+var _tag_mesh: ArrayMesh
+var _tag_key := ""
 var fx: Node
+
+## The day's theme word as the bank has it ("" on a plain day), its biscuit
+## (-1 when a shorter word), when the tag opened (INF while shut), and
+## whether the win carries a theme beat (the theme biscuit made last, or
+## the word named at the win).
+var _theme := ""
+var _theme_b := -1
+var _theme_at := INF
+var _theme_beat := false
+## The harness's seam: a pool used in place of the day's (folded words,
+## strongest first). Never set by the game.
+static var pool_for_shots: Array = []
 
 func puzzle_id() -> String: return "biscuit"
 func title() -> String: return "Biscuit Tin"
@@ -236,9 +268,17 @@ func _ready() -> void:
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_band = clampi(difficulty, 0, 3)
 	_rng.seed = rng.randi()
+	_theme = ""
+	_theme_b = -1
+	var themed := _themed_tin()
 	if demo and not demo_day.is_empty():
 		_st.band = _band
 		_st.load_day(demo_day)
+	elif not themed.is_empty():
+		_st.band = _band
+		_st.load_day(themed.day)
+		_theme = String(themed.word)
+		_theme_b = _st.biscuit_of(_theme)
 	else:
 		_st.deal(rng, _band, bank_step)
 	_fresh()
@@ -272,6 +312,9 @@ func _fresh() -> void:
 	_pieces_lit = []
 	_ghosts_key = ""
 	_lid_key = ""
+	_tag_key = ""
+	_theme_at = INF
+	_theme_beat = false
 	_stars.clear(_st.stars())
 	_relayout()
 
@@ -279,7 +322,8 @@ func day_dict() -> Dictionary:
 	if _st.pieces.is_empty():
 		return {}
 	return {
-		"source": "bank", "kind": "text",
+		"source": "theme" if themed() else "bank", "kind": "text",
+		"theme": _st.written(_theme) if themed() else "",
 		"payload": {"pieces": Array(_st.pieces), "biscuits": _st.biscuits.duplicate(true)},
 		"solution": {"biscuits": Array(_st.biscuit_words)},
 		"metrics": {"line": _st.line, "words": _st.word_list.size(), "pieces": _st.pieces.size(), "crumbs": _st.crumbs.size()},
@@ -364,6 +408,8 @@ func _read(land: float, free: bool) -> void:
 				fx.ring(_plate_mid(), _l("cell_h") * 0.9, Art.GOLD)
 			_floats.append({"text": "+%d" % got, "at": _t, "pos": _plate_mid()})
 			_say_now("BT_SAY_WORD", _st.written(w).to_upper(), got)
+			if themed() and w == _theme:
+				_theme_found(_plate_mid(), "BT_SAY_THEME", got)
 			_rate(before))
 	_refresh_pill()
 
@@ -390,6 +436,8 @@ func _bake(b: int, parts: Array, land: float, free: bool) -> void:
 			_say_now("BT_SAY_BISCUIT_FREE", _st.written(_st.biscuit_words[b]).to_upper())
 		else:
 			_say_now("BT_SAY_BISCUIT", _st.written(_st.biscuit_words[b]).to_upper(), State.POINTS[State.PLATE])
+		if b == _theme_b:
+			_theme_found(bake.mid, "BT_SAY_THEME_FREE" if free else "BT_SAY_THEME", -1 if free else State.POINTS[State.PLATE])
 		if not free:
 			# above the biscuit as it knits, clear of its word
 			_floats.append({"text": "+%d" % State.POINTS[State.PLATE], "at": _t + CLOSE, "pos": _plate_mid() - Vector2(0.0, _l("cell_h") * 0.6)}))
@@ -410,6 +458,8 @@ func _bake(b: int, parts: Array, land: float, free: bool) -> void:
 		_cue("land", 1.0 + 0.05 * slot)
 		if fx != null:
 			fx.sparkle(_lid_dot(slot), Art.GOLD)
+			if b == _theme_b:
+				fx.ring(_lid_dot(slot), LID_ROW * 0.42 * _s() * 1.6, Art.GOLD)
 		_rate(-1))
 	if _st.solved():
 		if not before_crumbs.is_empty():
@@ -422,13 +472,21 @@ func _bake(b: int, parts: Array, land: float, free: bool) -> void:
 		_phase_solved(lands)
 
 func _phase_solved(land: float) -> void:
+	if themed() and _st.solved():
+		# the win carries a theme beat: the theme biscuit was the last made,
+		# or the word was missed and is named now
+		_theme_beat = not Motion.reduce and (_st.whole.back() == _theme_b or not _st.found.has(_theme))
 	check_solved()
 	if not is_done():
 		return
 	_won_at = land + 0.2
 	_later(land + 0.2, func() -> void:
 		_lid_bump_at = _t
-		_say_now("BT_PERFECT" if _st.points >= _st.line else "BT_DONE"))
+		_say_now("BT_PERFECT" if _st.points >= _st.line else "BT_DONE")
+		if themed() and _theme_at == INF:
+			# missed: the tag names the word, quietly
+			_theme_at = _t
+			_tag_key = "")
 	_later(land + 0.45, func() -> void:
 		_cue("solved")
 		if fx != null:
@@ -802,6 +860,7 @@ func _draw() -> void:
 		return
 	_draw_scene()
 	_draw_lid()
+	_draw_tag()
 	_draw_ghosts()
 	var font: Font = CozyTheme.display(800)
 	# the tin's pieces first, then the plate's, then any flying on top
@@ -866,6 +925,9 @@ func _draw_lid() -> void:
 			var at := _lid_slot(k)
 			var dot := _lid_dot(k)
 			if k < _lid_shown:
+				if _st.whole[k] == _theme_b:
+					# the day's word: a gold ring round its biscuit
+					b.stroke(Face.Builder.ring(dot, r * 1.2, r * 1.2), maxf(2.0, r * 0.12), Art.GOLD, true)
 				Art.whole(b, dot, r, _st.whole[k])
 			else:
 				Art.dimple(b, dot, r)
@@ -885,6 +947,9 @@ func _draw_lid() -> void:
 		if k < _lid_shown:
 			var bk: int = _st.whole[k]
 			text = _st.written(_st.biscuit_words[bk]).to_upper()
+			if bk == _theme_b:
+				# the day's word written in gold
+				ink = Art.RIM_LIT
 		else:
 			text = "? ? ?"
 			ink = Color(ink, 0.5)
@@ -1098,7 +1163,7 @@ func _draw_say() -> void:
 		text = text % _say_n
 	elif _say_arg != "" and text.contains("%s"):
 		text = text % _say_arg
-	var good := _say in ["BT_SAY_WORD", "BT_SAY_BISCUIT", "BT_SAY_BISCUIT_FREE", "BT_PERFECT", "BT_DONE", "BT_READ"]
+	var good := _say in ["BT_SAY_WORD", "BT_SAY_BISCUIT", "BT_SAY_BISCUIT_FREE", "BT_SAY_THEME", "BT_SAY_THEME_FREE", "BT_PERFECT", "BT_DONE", "BT_READ"]
 	var fs := roundi(SAY_SIZE * (1.15 if good else 1.0) * _s())
 	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	if tw > size.x * 0.94:
@@ -1168,7 +1233,7 @@ func _draw_pill() -> void:
 func win_delay() -> float:
 	if Motion.reduce:
 		return Motion.REDUCED_TIME
-	return WIN_HOLD
+	return WIN_HOLD + (THEME_HOLD if _theme_beat else 0.0)
 
 func skill_quality() -> float:
 	if _st.pieces.is_empty():
@@ -1184,6 +1249,9 @@ func flat_win() -> Dictionary:
 		line = tr("BT_WIN_LINE") % [_st.points, _st.found.size()]
 	else:
 		line = tr("BT_WIN") % [_st.points, _st.line]
+	if themed():
+		var key := "BT_WIN_THEME" if _st.found.has(_theme) else "BT_WIN_THEME_MISSED"
+		line = tr(key) % [_st.written(_theme).to_upper(), line]
 	return {"faces": [], "subtitle": line}
 
 func completion_record() -> Dictionary:
@@ -1211,5 +1279,111 @@ func restore_completed_board() -> void:
 			_st.found.append(w)
 	_lid_shown = _st.whole.size()
 	_lid_key = ""
+	if themed():
+		# a reopened themed day shows the tag open on the word
+		_theme_at = _t - 10.0
+		_tag_key = ""
 	_snap()
 	queue_redraw()
+
+# --- the daily theme (2026-11-06) ---
+
+func themed() -> bool:
+	return _theme != ""
+
+## The tin a themed daily deals ({day, word}, the word as the bank spells
+## it), or {}: only a daily dealt from its day, never New, never the
+## tutorial's tin. A tin with the word among its biscuits first, else
+## among any word it credits.
+func _themed_tin() -> Dictionary:
+	if demo or bank_step != 0 or daily_key == 0:
+		return {}
+	var pool: Array = pool_for_shots if not pool_for_shots.is_empty() else ThemedPictures.theme_pool(daily_key)
+	if pool.is_empty():
+		return {}
+	var boards: Array = InsaneBank.boards(State.BANKS[clampi(_band, 0, 3)])
+	var got := ThemedPictures.bank_pick(boards, pool, daily_key, _biscuit_words)
+	if got.is_empty():
+		got = ThemedPictures.bank_pick(boards, pool, daily_key, _credited_words)
+	if got.is_empty():
+		return {}
+	var day: Dictionary = boards[int(got.index)]
+	# the word as the tin spells it (the pool's is folded)
+	for w in _credited_words(day):
+		if Locale.fold(String(w)) == String(got.word):
+			return {"day": day, "word": String(w)}
+	return {}
+
+## A banked tin's biscuit words.
+static func _biscuit_words(day: Dictionary) -> Array:
+	var out: Array = []
+	var pieces: Array = day.get("pieces", [])
+	for b in day.get("biscuits", []):
+		var w := ""
+		for i in b:
+			if int(i) >= 0 and int(i) < pieces.size():
+				w += String(pieces[int(i)])
+		out.append(w)
+	return out
+
+## Every word a banked tin credits (its biscuits among them).
+static func _credited_words(day: Dictionary) -> Array:
+	var out: Array = []
+	for e in day.get("words", []):
+		out.append(String(e[0]) if e is Array else String(e))
+	return out
+
+## The theme word made, at `at`: the tag opens, a sparkle, the theme cue a
+## breath after the word's own, and the say line names it.
+func _theme_found(at: Vector2, say: String, got: int) -> void:
+	if _theme_at != INF:
+		return
+	_theme_at = _t
+	_tag_key = ""
+	_say_now(say, _st.written(_theme).to_upper(), got)
+	if fx != null:
+		fx.sparkle(at, Art.GOLD)
+		fx.sparkle(_tag_mid(), Art.GOLD)
+	_later(_t + THEME_CUE, func() -> void: _cue("theme"))
+
+## The tag's middle: on the lid's lower rim, in the middle.
+func _tag_mid() -> Vector2:
+	var lid: Rect2 = _L.get("lid", Rect2())
+	return Vector2(lid.get_center().x, lid.end.y)
+
+## The tag on the lid's rim: a paper label with a sun while the word is
+## unmade, opened to name it once made (or at the win).
+func _draw_tag() -> void:
+	if not themed() or _L.is_empty():
+		return
+	var open := _theme_at != INF and _t >= _theme_at
+	var font: Font = CozyTheme.display(800)
+	var s := _s()
+	var h := TAG_H * s
+	var text := _st.written(_theme).to_upper() if open else ""
+	var fs := roundi(TAG_FONT * s)
+	var tw := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x if open else 0.0
+	var sun_r := h * 0.25
+	var w := h if not open else h * 1.45 + tw
+	var c := _tag_mid()
+	var key := "%s:%s:%d" % [str(c), text, roundi(h)]
+	if key != _tag_key or _tag_mesh == null:
+		_tag_key = key
+		var b := Face.Builder.new()
+		var corner := Vector2(-w * 0.5, -h * 0.5)
+		b.polygon(Face.Builder.round_rect(corner + Vector2(0.0, h * 0.08), Vector2(w, h), h * 0.5), Color(Art.TIN_DEEP, 0.5))
+		b.polygon(Face.Builder.round_rect(corner, Vector2(w, h), h * 0.5), Pal.SURFACE)
+		b.stroke(Face.Builder.round_rect(corner, Vector2(w, h), h * 0.5), maxf(1.5, h * 0.07), Art.GOLD, true)
+		var sun_at := Vector2(0.0 if not open else -w * 0.5 + h * 0.55, 0.0)
+		Art.sun(b, sun_at, sun_r)
+		_tag_mesh = b.mesh()
+	var k := 1.0
+	if open and not Motion.reduce and _t - _theme_at < TAG_POP:
+		k = Motion.pop_in_scale(_t - _theme_at, TAG_POP).x
+	draw_set_transform(c, 0.0, Vector2.ONE * k)
+	draw_mesh(_tag_mesh, null)
+	if open:
+		var x := -w * 0.5 + h * 1.0
+		var base := font.get_ascent(fs) * 0.36
+		draw_string(font, Vector2(x, base), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Art.GOLD_DEEP.darkened(0.35))
+	draw_set_transform(Vector2.ZERO)

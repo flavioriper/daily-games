@@ -7,6 +7,15 @@ extends SceneTree
 ## from its card, with the draw calls of each frame. `tut` shoots a tutorial
 ## page played a while; `card` the menu card beside Padlock's. Puts nothing
 ## in the player's save.
+##
+## `theme` (2026-11-06): the board's seam (`pool_for_shots`) is handed the
+## fixture pool in the scratchpad's theme_pool_fixture.json (the player's
+## language, folded) before the deal, so the tin is the themed one; after
+## the rest shot the theme word is made by the pointer (`theme_flying`,
+## `theme_found`, `theme_tag`, `theme_settled`), then the rest is solved
+## and the win and the reopened day shot as ever. `theme=miss` never makes
+## a shorter theme word, for the tag naming it at the win. `lang=pt|es`
+## plays in that language (Locale's cached code only, nothing saved).
 
 const Diagram = preload("res://ui/hud/biscuit_tutorial_diagram.gd")
 
@@ -20,6 +29,9 @@ var _f := 0
 var _step := 0
 var _diag: Control
 var _at := 90
+var _theme := ""
+var _lang := ""
+const FIXTURE := "/private/tmp/claude-501/-Users-flavioriper-dev-daily/34d2447a-148c-4075-8921-873314a4eae3/scratchpad/theme_pool_fixture.json"
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -33,6 +45,10 @@ func _initialize() -> void:
 			_at = int(a.substr(3))
 		elif a == "card":
 			_step = 60
+		elif a == "theme" or a == "theme=miss":
+			_theme = a
+		elif a.begins_with("lang="):
+			_lang = a.substr(5)
 		else:
 			_dir = a
 	var progress = load("res://core/progress.gd")
@@ -70,6 +86,35 @@ func _tap(i: int) -> void:
 	_touch(at, true)
 	_touch(at, false)
 
+## The pieces that spell `w` in order (a biscuit's four, else the fewest
+## of the tin's pieces).
+func _run_for(st, w: String) -> Array:
+	var b: int = st.biscuit_of(w)
+	if b >= 0:
+		return st.biscuits[b]
+	var tin: Array = st.in_tin()
+	for n in [1, 2, 3, 4]:
+		var got := _spell(st, tin, w, n, [])
+		if not got.is_empty():
+			return got
+	return []
+
+func _spell(st, tin: Array, w: String, n: int, at: Array) -> Array:
+	var so_far := ""
+	for i in at:
+		so_far += st.pieces[i]
+	if at.size() == n:
+		return at if so_far == w else []
+	for i in tin:
+		if at.has(i):
+			continue
+		var next: String = so_far + st.pieces[i]
+		if w.begins_with(next):
+			var got := _spell(st, tin, w, n, at + [i])
+			if not got.is_empty():
+				return got
+	return []
+
 func _process(_delta: float) -> bool:
 	_f += 1
 	if _step == 60:
@@ -85,6 +130,18 @@ func _process(_delta: float) -> bool:
 			quit()
 			return true
 		return false
+	if _f == 4:
+		if _lang != "":
+			Locale._current = _lang
+			TranslationServer.set_locale(_lang)
+		if _theme != "":
+			var doc = JSON.parse_string(FileAccess.get_file_as_string(FIXTURE))
+			var pool: Array = []
+			for w in doc.get(Locale.current(), []):
+				var f := Locale.fold(String(w))
+				if not pool.has(f):
+					pool.append(f)
+			load("res://puzzles/biscuit2d.gd").pool_for_shots = pool
 	if _f == 5:
 		_menu._open_at(load("res://ui/registry.gd").find("biscuit"), _band)
 		_host = _menu.get_child(_menu.get_child_count() - 1)
@@ -113,11 +170,37 @@ func _process(_delta: float) -> bool:
 		0:
 			_shot("rest")
 			print("pieces %s biscuits %s line %d words %d crumbs %s" % [st.pieces, st.biscuit_words, st.line, st.word_list.size(), st.crumbs])
+			print("day ", _b.day_dict().get("source"), " theme=", _b.day_dict().get("theme", ""), " biscuit=", _b._theme_b)
+			if _theme != "":
+				_step = 20
+				_f = 2000
+				return false
 			var run: Array = Diagram.short_word(st)
 			if run.size() >= 1:
 				_tap(run[0])
 			_step = 1
 			_f = 1000
+		20:
+			if _f == 2001:
+				var run: Array = _run_for(st, _b._theme)
+				print("theme run %s" % [run])
+				if _theme == "theme=miss" and _b._theme_b < 0:
+					_step = 4
+					_f = 4000
+					return false
+				for i in run:
+					_tap(int(i))
+			if _f == 2004:
+				_shot("theme_flying")
+			if _f == 2020:
+				_shot("theme_found")
+			if _f == 2040:
+				_shot("theme_tag")
+			if _f == 2100:
+				_shot("theme_settled")
+				print("theme found=%s points=%d whole=%s" % [st.found.has(_b._theme), st.points, st.whole])
+				_step = 4
+				_f = 4000
 		1:
 			var run: Array = Diagram.short_word(st)
 			if _f == 1003:
@@ -173,10 +256,13 @@ func _process(_delta: float) -> bool:
 				_shot("won_early")
 			if _f == 6040:
 				_shot("winning")
+			if _f == 6110 and _theme != "":
+				_shot("theme_won")
 			if _f == 6240:
 				_shot("won")
 				print("won points=%d line=%d helped=%d stars=%d quality=%.2f" % [st.points, st.line, st.helped, st.stars(), _b.skill_quality()])
 				print(_b.share_glyphs())
+				print("subtitle: ", _b.flat_win().subtitle)
 				_host.closed.emit()
 				_step = 7
 				_f = 7000

@@ -58,3 +58,56 @@
   a native speaker, the word lists read by a person (rare words credited:
   `hame`, `tiro`), the website's game list (`web/scripts/gen_games.py`)
   not regenerated.
+
+## The daily theme (2026-11-06)
+
+The bank word boards' wave: the tin of the day holds one of the day's
+theme words (`ThemedPictures.theme_pool` / `bank_pick`, 1753f58a).
+
+- **The deal**: on a daily dealt from its day (`bank_step == 0`,
+  `daily_key != 0`, never the tutorial's tin) `_themed_tin()` runs
+  `bank_pick` over the band's bank first with the tins' biscuit words
+  only, then (no hit) with every word a tin credits, and deals that entry
+  whole (`State.load_day`) in place of `InsaneBank.pick`. No hit deals the
+  bank's turn as ever. `_theme` is the word as the tin spells it,
+  `_theme_b` its biscuit or -1. On the fixture pool (campfire night) only
+  Hard holds a theme biscuit in each language (MUSHROOM, COGUMELO,
+  LINTERNA); the other bands take a shorter word (EMBER, TENT, CESTA,
+  FRUTA...), which the solve does not need.
+- **Before it is made**: a little paper tag with a gold-rimmed sun hangs
+  in the middle of the lid's lower rim (TAG_H 54), never the word.
+- **Made**: the tag pops open over TAG_POP 0.35 s to name it (sun, word in
+  deep gold), a gold sparkle at the plate and one at the tag, the `theme`
+  cue THEME_CUE 0.14 s after the word's own (`word` or `biscuit`), and the
+  say line reads `BT_SAY_THEME` ("Today's word: EMBER! +2";
+  `BT_SAY_THEME_FREE` when the bulb laid it). A theme biscuit wears a gold
+  ring on the lid (the lid's mesh, no draw call) and its word is written
+  in rim gold; a gold `fx.ring` as it lands. No shade of a piece's colour.
+- **Missed** (a shorter word the player never made): at the win the tag
+  opens and names it, quietly (no cue), under "Well done!".
+- **Win**: subtitle `BT_WIN_THEME` ("Today's word: %s! %s", the plain
+  line after it) or `BT_WIN_THEME_MISSED` ("Today's word was %s. %s").
+  The card waits THEME_HOLD 0.6 s longer only when the win carries a
+  theme beat (the theme biscuit made last, or the word named at the win;
+  never under `Motion.reduce`). A reopened themed day shows the tag open.
+  `day_dict()` says `"source": "theme"`, `"theme": <word as written>`.
+- Draw calls (opengl3_angle 810x1440, `theme`): Easy en 128 rest, 129-139
+  as the word is made, 153 won; Medium pt 156 rest, 160-167, 157 won;
+  Hard en 156 rest, 147-166, 157 won. The tag is one cached mesh and one
+  string. `_win.gd biscuit` has no Biscuit Tin solver (FAIL
+  solved=false, as before this pass); the shot harness solves it.
+- Sound: new `theme` row (Pie's: the wrap climbing to the octave and a
+  third). The set's other rows keep the house sound by job (token set
+  down, lip taken off, wrap repeated, tongue refused); `hint` stays the
+  breeze copied from Honeycomb and `enter` a token run, as the other
+  boards have them.
+- Harness: `tests/_shot_biscuit.gd -- <dir> d=<n> theme|theme=miss
+  [lang=pt|es]` hands the board's seam (`pool_for_shots`, a static) the
+  scratchpad fixture pool, folded, before the deal, makes the word by
+  pointer and adds `theme_flying`, `theme_found`, `theme_tag`,
+  `theme_settled`, `theme_won`; `theme=miss` never makes a shorter word.
+  The harness boots world/main, so even without `theme` the real path
+  reads this Mac's cached night (Medium en dealt SHIRT on 2026-11-06).
+- Owed: phone, ear (the `theme` cue unheard), pt/es read by a native
+  speaker, and an es run (pt and en seen); reduce motion written (tag
+  open at once, no hold) but unseen.

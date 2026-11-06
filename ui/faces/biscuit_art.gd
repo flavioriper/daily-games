@@ -146,6 +146,18 @@ static func whole(b, at: Vector2, r: float, kind := 0) -> void:
 		var a := TAU * k / 8.0 + 0.2
 		b.ellipse(at + Vector2(cos(a), sin(a)) * r * 0.7, r * 0.04, r * 0.035, Color(DOCK, 0.7))
 
+## A little sun, `r` across its disc (the daily theme's tag): eight
+## rounded rays, a gold disc, a lit cheek.
+static func sun(b, at: Vector2, r: float) -> void:
+	for k in 8:
+		var a := TAU * k / 8.0
+		var d := Vector2(cos(a), sin(a))
+		var n := Vector2(-d.y, d.x)
+		b.polygon(PackedVector2Array([at + d * r * 1.05 + n * r * 0.26, at + d * r * 1.6, at + d * r * 1.05 - n * r * 0.26]), GOLD_DEEP)
+	b.disc(at, r * 1.08, GOLD_DEEP)
+	b.disc(at, r, GOLD)
+	b.disc(at + Vector2(-r * 0.28, -r * 0.3), r * 0.32, Color(RIM_LIT, 0.9))
+
 ## An empty dimple on the lid for a biscuit not made yet, `r` across.
 static func dimple(b, at: Vector2, r: float) -> void:
 	b.disc(at + Vector2(0.0, r * 0.05), r, TIN_DEEP)
