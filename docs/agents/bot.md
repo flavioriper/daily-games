@@ -376,8 +376,11 @@ players. Players will probably use to practice a new language."
   gather plays from its start, the face forms 1.3 s later with its eyes shut
   and they open after 0.7 s. A face already formed (a redial) never sleeps.
   Probe: `tests/_probe_swarm_sleep.gd` (untracked).
-- **Owed**: a deploy (`tools/deploy_bot.sh`) and the knowledge sync, both
-  person-run; hearing a real call; the pt/es greetings by a native ear.
+- **Deployed 2026-11-06** on the user's word: revision `peeplet-bot-00006-xv9`
+  (image `32e41ea0-20261106160333`, 100% traffic, `/health` 200) and the
+  knowledge synced to production Neon (59 rows a language, the new swarm.md
+  in, the old line gone). **Owed**: hearing a real call; the pt/es greetings
+  by a native ear.
 
 ## The tool bench: luna, terra, sol (2026-11-06)
 
