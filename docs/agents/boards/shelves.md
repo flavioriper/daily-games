@@ -76,5 +76,10 @@
     shelf the theme's. 113-155 draw calls.
   - Unheard; the night's writer is undeployed until a person runs
     `tools/deploy_functions.sh`, and the first themed board is the first
-    day published after that. Not smoke-run with a model: the local
-    OpenRouter key was out of credits (402) on 2026-11-06.
+    day published after that. Smoke-run 2026-11-06 on the Neon AI Gateway
+    (the night's models, `server/functions/.env` + the
+    `NEON_AI_GATEWAY_TOKEN` secret; OpenRouter is no longer used): every
+    themed draft carried its theme shelf first ("Round the campfire"), but
+    0 of 6 themed drafts passed review, and 0 of 3 unthemed ones did either
+    (pt/es "sorted otherwise", "obscure"), so the review rate is the
+    board's, not the theme's.

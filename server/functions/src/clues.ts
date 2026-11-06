@@ -308,10 +308,12 @@ function themeAsk(theme: Theme | null): string {
   if (theme === null) return `Mark every round "theme": false.`;
   return `The day has a theme, "${theme.name.en}" (pt "${theme.name.pt}", es "${theme.name.es}"): ` +
     `${theme.scene} Its things: ${theme.objects.map((o) => o.name).join(", ")}. Exactly two of the rounds ` +
-    `are the theme's, marked "theme": true: each an idea found or done in that place or moment, ` +
-    `at the band's difficulty ("Campfire at Dusk": "things you toast", "things that crackle"), never ` +
-    `the theme itself: no word of the theme's title in any language may be in the label, a clue or an ` +
-    `accept word. The other rounds are marked "theme": false and have nothing to do with the theme.`;
+    `are the theme's, marked "theme": true: each a plain, clear category from that place or moment, ` +
+    `as easy to name once seen as the band's other rounds (a set of things you would find, use or ` +
+    `see there, or a kind of thing it is full of), never a vague property that other clues could ` +
+    `also fit, and never the theme itself: no word of the theme's title in any language may be in ` +
+    `the label, a clue or an accept word. Its accept words name the category, never one of its ` +
+    `clues. The other rounds are marked "theme": false and have nothing to do with the theme.`;
 }
 
 function writerPrompt(day: number, band: number, taken: string[], theme: Theme | null = null): string {

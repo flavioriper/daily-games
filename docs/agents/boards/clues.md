@@ -69,4 +69,11 @@
     corner; found, the rosette hops, is rung and sparkled with the `theme`
     cue (the right answer's wraps carried up an octave).
   - Harness: `tests/_shot_clues.gd -- <dir> d=1 theme`. 87-163 draw calls.
+  - Smoke-run on the Neon AI Gateway 2026-11-06: with examples in the ask
+    ("things you toast") the writer copied them, the reviewer called them
+    arguable, and it put the telling clue among the accept words (all five
+    drafts invalid). Asked instead for a plain, clearly nameable category
+    of the place, accept words naming the category: every draft valid, a
+    theme round passed ("Forest floor finds"), others missed by one
+    language ("Camping gear": pt).
   - Unheard; undeployed until a person runs `tools/deploy_functions.sh`.
