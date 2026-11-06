@@ -817,17 +817,18 @@ func _draw_soil(easing: bool) -> void:
 		for i in n * n:
 			if not wet.has(i) or _st.end_of(i) >= 0 or _st.is_seed(i) or _st.is_void(i):
 				continue
-			# a themed day's picture stands without tufts once it is in
-			if painting and _paint(i).a > 0.5:
+			# a themed day's tufts sink as its picture comes in
+			var gone: float = _paint(i).a if painting else 0.0
+			if gone >= 0.99:
 				continue
 			var grow := 1.0
 			var bloom := 0.0
 			if not Motion.reduce:
 				grow = Motion.back_out(clampf((_t - float(_wet_at.get(i, -INF))) / GROW_TIME, 0.0, 1.0))
-			if is_done():
+			if is_done() and not painting:
 				# a reopened day (_won_at -INF) stands in bloom
 				bloom = 1.0 if Motion.reduce else Motion.back_out(clampf((_t - _won_at - (i % n + i / n) * WAVE_STEP * 0.6) / 0.35, 0.0, 1.0))
-			Art.sprout(b, _cell_pos(i), cs, i, grow, bloom)
+			Art.sprout(b, _cell_pos(i), cs, i, grow * (1.0 - gone), bloom)
 		_soil = b.mesh()
 	draw_mesh(_soil, null)
 

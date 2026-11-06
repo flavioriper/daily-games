@@ -169,7 +169,7 @@ keeping.
   square, lit where the top faces out, one mesh). A press outside the shape
   is nothing (`cell_at` -1); a drag aimed there walks to the edge and stops.
 - **The win**: the soil takes the picture's beads (`Pal.PG_BEADS`, pale ones
-  shaded) in the daisies' diagonal wave, tufts give way to it, the hoses ease
+  shaded) in the daisies' diagonal wave, the tufts sinking as it comes (no daisies), the hoses ease
   to `HOSE_REST` 0.4 so the picture shows through, the `theme` cue rings
   (wraps climbing an octave, Horse Pen's) with a GOOD knock, the card says
   "Today's bed: %s." (`HS_WIN_THEME`), and the report waits `THEME_HOLD` 0.9
@@ -179,7 +179,7 @@ keeping.
   newest cached night and, in place of the menu reopen, restores the won bed
   on the board (`reopen`); `won_paint` is the picture before the report.
   Note the harness boots the real main scene, so a plain run on a day this
-  Mac has cached is themed too (20261106's Easy is the Towel, a 4x5 bed).
+  Mac has cached is themed too (20261106's Easy is the Towel, a 4x5 bed), and its menu reopen restored it whole (4 joined, 20 watered).
   The theme run logs one "Parameter mesh is null" on its re-deal frame (the
   world rebuilt and drawn in one frame); plain runs and `_win.gd` are clean.
 - Draw calls (opengl3_angle, 810x1440): 78-91 in play, 146 peak on the win.
