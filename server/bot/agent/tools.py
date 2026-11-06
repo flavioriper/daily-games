@@ -366,6 +366,8 @@ class Toolbox:
         if clear is True:
             self.drawn = None
             return {"summary": "Done: my face is back", "draw": {"clear": True}}
+        if frames not in (None, "", []) and (subject or name or rows):  # a moving picture sent with a second source: the frames are the one worth more
+            subject = name = rows = None
         sources = [k for k, v in (("subject", subject), ("name", name), ("rows", rows), ("frames", frames)) if v not in (None, "", [])]
         if len(sources) != 1:
             return {"error": "pass exactly one of subject, name, rows or frames (or clear: true)"}
@@ -398,6 +400,7 @@ class Toolbox:
         if frames is not None:
             if not isinstance(frames, list) or not FRAMES[0] <= len(frames) <= FRAMES[1]:
                 return {"error": f"frames must be {FRAMES[0]} to {FRAMES[1]} drawings"}
+            frames = _even_frames(frames)  # a row or a frame a pixel short is a near miss: padded with empty, never refused
             for n, f in enumerate(frames, 1):
                 if why := _rows_wrong(f):
                     return {"error": f"frame {n}: {why}"}
@@ -425,6 +428,7 @@ class Toolbox:
             self.drawn = meant
             return {"summary": f"Done: I drew {meant} moving, {len(frames)} frames" + (f" {int(times)} times" if times > 1 else "") + ", resting on the last", "perform": {"steps": steps, "back": False, "end": round(at, 2)}}
         if rows is not None:
+            rows = _even(rows)
             if why := _rows_wrong(rows):
                 return {"error": why}
             meant = " ".join(str(meant or "").split())[:80]
@@ -683,6 +687,28 @@ def _took(notes: list) -> str:
 
 def _number(v) -> bool:
     return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
+def _even(rows):
+    """Rows of uneven length padded with empty pixels to the longest; anything not a list of strings is left for _rows_wrong to refuse."""
+    if not isinstance(rows, list) or not rows or not all(isinstance(r, str) for r in rows):
+        return rows
+    wide = max(len(r) for r in rows)
+    return [r.ljust(wide, ".") for r in rows]
+
+
+def _even_frames(frames):
+    """Every frame evened, then all centred in the largest frame's size, so the dots flow between drawings of one size."""
+    frames = [_even(f) for f in frames]
+    if not all(isinstance(f, list) and f and all(isinstance(r, str) for r in f) for f in frames):
+        return frames
+    tall, wide = max(len(f) for f in frames), max(len(f[0]) for f in frames)
+    out = []
+    for f in frames:
+        left, top = (wide - len(f[0])) // 2, (tall - len(f)) // 2
+        body = ["." * left + r + "." * (wide - len(r) - left) for r in f]
+        out.append(["." * wide] * top + body + ["." * wide] * (tall - len(f) - top))
+    return out
 
 
 def _rows_wrong(rows) -> str:
