@@ -114,6 +114,7 @@ class PolicySteer(FrameProcessor):
         self._overdue: asyncio.Task | None = None
         self._heard, self._reflexed, self._typing, self._answering, self._stopped = "", False, False, False, False
         self._looked = False
+        self._thought = False  # a slow tool's thinking line played since the player last spoke
         self._stopped_at: float | None = None
         self._held: Callable[[], Awaitable[None]] | None = None  # the rest of a speculative turn, run when Flux commits
         self.last_features: list[float] | None = None
@@ -158,9 +159,8 @@ class PolicySteer(FrameProcessor):
     async def tools_started(self, names: list[str], slow: bool = False) -> None:
         """A tool can run after the model has already spoken, when the gap clock has stood down, and the silence would read as a dead line. Reaching a person gets its one line and then real quiet. `slow`: a screen tool that takes seconds (a drawing made from a subject, a look at the screen); without the gap clock it gets one thinking line and one stall, unless the model has spoken."""
         if slow and not self.gap_fillers:
-            if not self._answering and not self._looked:
-                self._looked = True
-                self._stand_down()
+            if not self._answering and not self._thought:
+                self._thought = True  # once a player turn: a draw and the look after it are one wait
                 await self.clips.play("thinking")
                 self._bridge = asyncio.ensure_future(self._stall_later())
             return
@@ -388,6 +388,7 @@ class PolicySteer(FrameProcessor):
 
     def _user_started(self) -> None:
         self._stopped, self._reflexed, self._heard, self._stopped_at, self._held = False, False, "", None, None
+        self._thought = False
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)

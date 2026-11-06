@@ -174,7 +174,12 @@ still goes in. A slow screen tool (`slow_call`: `see`, or `draw` with a
 `subject`) started before the model has said a word gets one `thinking`
 clip, then one `stalls` at `stall_after_s` if still nothing; a tool called
 after words gets nothing. `voice` joined `SILENT_TOOLS` (it was getting the
-typing cue).
+typing cue). At most one thinking line a player turn (`_thought`, reset
+when the player speaks): a draw and the look after it are one wait. To
+listen for on the first real call: `_answering` is set when the text frame
+reaches `AfterLLM`, `on_function_calls_started` fires inside the LLM
+service; if the event wins, a thinking line follows the model's own "let me
+draw that" (the same race reach_owner always had).
 
 Subtitles: "completely different from what the agent says... keep the
 subtitle off till user ask for a subtitle". `SwarmFace.subtitles` (false)
