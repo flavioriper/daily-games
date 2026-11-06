@@ -265,8 +265,8 @@ def test_bye_sends_the_memory_then_the_ack_and_closes():
     with client.websocket_connect("/ws/bot") as ws:
         ws.send_json({"type": "hello", "token": "t", "language": "en", "memory": memory})
         assert ws.receive_json()["type"] == "session"
-        got = _json_until(ws, "said")
-        assert got[-1]["text"].startswith("Hi, I'm Swarm") and {"type": "state", "name": "speaking"} in got  # the greeting's line, before its clip
+        got = _json_until(ws, "state")
+        assert got[-1] == {"type": "state", "name": "thinking"} and not any(m.get("type") == "said" for m in got)  # a returning player: the model greets them, the recorded "what should I call you?" never plays
         ws.send_json({"type": "forget", "id": "f1"})
         assert _json_until(ws, "memory")[-1] == {"type": "memory", "op": "forget", "id": "f1", "text": ""}
         ws.send_json({"type": "bye"})

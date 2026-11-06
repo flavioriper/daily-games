@@ -340,6 +340,22 @@ the eye (stubbed), memory or style notes, speech recognition or barge-in. Run fr
 `OPENAI_API_KEY` set (it bills the production OpenAI account); `--fake` checks the scoring offline. Output:
 `runs.jsonl`, `judge.jsonl`, `report.md` under `--out`.
 
+## Who hears the recorded greeting; the first call's warm-up (2026-11-06)
+
+The recorded greeting ends "What should I call you?", so it asked the user's name on every call although the
+memory had it (the memory itself was fine: the name was pinned on turn 1). Now only a **new player** (the hello's
+memory has no facts and no episodes) hears the greeting and disclosure clips. A **returning player** is greeted by
+the model (the user's call): `voice/bot.py` `greet()` adds `welcome_back(store)` (the newest 12 facts, the last
+two calls) as a system note and queues a `GreetingFrame`, which `PolicySteer` passes straight to the model (no
+turn for Jev, memory or outcomes). luna wrote "Hi, Flavio! Lovely to see you again. How're the word puzzles
+going?" in 0.9 to 3 s (en, pt, es); the disclosure is not repeated.
+
+The first call on a fresh instance took 15 s from connect to the pipeline running (15:01 UTC, revision 00004's
+first call, three hours after it started): the voice pipeline is imported on first use and the embedding model
+loaded on the first hello. `bot/app.py` `warm_call()` now loads both, and the memory gate, on a worker thread at
+startup. Each call prints one stdout line, durations only: `{"call_setup_ms": {memory_ms, returning, setup_ms,
+connected_ms, first_voice_ms}}` (loguru keeps warnings, so this is a plain print).
+
 ## Testing a call locally
 
 `BOT_TEST_PAGE=1 uv run python server.py` serves `GET /test`

@@ -1,6 +1,8 @@
 """One call: the phone's websocket, Flux, PolicySteer, any LLM, ElevenLabs, clips (spec section 7). Flux's eager end of turn starts Jev and a held reply; its commit releases them. Events go to the phone as they happen (voice/phone.py); nothing about the player is kept."""
 import asyncio
+import json
 import os
+import time
 import re
 from dataclasses import dataclass
 from functools import lru_cache
@@ -42,7 +44,7 @@ from voice.pace import PaceProcessor
 from voice.phone import SEE_SECONDS, KeptOpen, KindLog, Phone
 from voice.prompt import system_prompt
 from voice.serializer import IN_RATE, PcmSerializer
-from voice.steer import AfterLLM, PolicySteer
+from voice.steer import AfterLLM, GreetingFrame, PolicySteer
 from voice.stopword import StopWordUserTurnStartStrategy
 
 EAGER_EOT = 0.5
@@ -109,6 +111,27 @@ CAP_SECONDS = 15 * 60  # a call ends itself after fifteen minutes, with a line
 BYE_GRACE = 0.4  # after the goodbye clip, before the pipeline stops
 STATES = {"hearing": "listening", "speaking": "speaking", "done": "listening"}
 ROOT = Path(__file__).resolve().parent.parent
+PINNED_FACTS, RECENT_CALLS = 12, 2  # what the model's welcome back is written from: the newest facts and calls (memory/turn.py PIN)
+
+
+def returning(store: DeviceStore | None) -> bool:
+    """A player the Swarm has met: anything kept from an earlier call. A new player hears the recorded greeting, which asks their name."""
+    return bool(store and (store.facts or store.episodes))
+
+
+def welcome_back(store: DeviceStore) -> str:
+    """The note that has the model open a call with a returning player, from what the phone sent in the hello."""
+    facts = "; ".join(f.text for f in store.facts[:PINNED_FACTS]) or "nothing yet"
+    calls = "; ".join(e.summary for e in sorted(store.episodes, key=lambda e: e.created_at, reverse=True)[:RECENT_CALLS])
+    return ("[The call just opened and they have not spoken yet. You have talked before, so open it: greet them warmly in one or two short sentences, "
+            "by name if you know it, and touch on one thing you remember if it fits. Never ask their name when you know it, and do not say again that you are an AI. "
+            "Speak the language of this call.]\n"
+            f"[memory: what you know about this person: {facts}]" + (f"\n[memory: your last calls: {calls}]" if calls else ""))
+
+
+def setup_line(took: dict) -> None:
+    """One line a call on stdout, durations only (nothing a player said): where a slow start went. Loguru keeps warnings only."""
+    print(json.dumps({"call_setup_ms": took}), flush=True)
 
 
 def state_of(event: dict) -> str | None:
@@ -180,6 +203,8 @@ def with_style(card: Card, notes: list[str]) -> Card:
 
 async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, store: DeviceStore | None = None) -> None:
     """One call on the phone's socket, after the hello. Ends on `bye` (or the fifteen-minute cap) with the call's memory sent and `bye_ack`, or when the phone goes away, with nothing sent."""
+    started = time.perf_counter()
+    took: dict = {"memory_ms": getattr(getattr(websocket, "state", None), "memory_ms", None), "returning": returning(store)}
     phone = Phone.of(websocket, see_s=_dep(deps, "see_seconds", SEE_SECONDS))
     if store is None:
         store = await DeviceStore.load({}, phone.send)
@@ -210,6 +235,9 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
             outcomes.heard()
         if name := state_of(e):
             phone.state(name)
+        if at == "speaking" and "connected_ms" in took and "first_voice_ms" not in took:
+            took["first_voice_ms"] = round((time.perf_counter() - started) * 1000) - took["connected_ms"]
+            setup_line(took)
 
     ledger = _dep(deps, "ledger") or default_ledger()
     ids = {"user_id": user_id, "persona": card.slug, "session_id": session_id}
@@ -340,9 +368,19 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
             asyncio.ensure_future(jev.warm())
         asyncio.ensure_future(warm_llm(s.llm))
         log(kind="connected")
+        took["connected_ms"] = round((time.perf_counter() - started) * 1000)
+        if took["returning"]:
+            await greet()
+            return
         await speak("greeting")
         if card.disclose:
             await speak("disclosure")
+
+    async def greet() -> None:
+        """A returning player is greeted by the model, by name, from their memory; the recorded greeting asks who they are."""
+        phone.state("thinking")
+        context.add_message({"role": "system", "content": welcome_back(store)})
+        await task.queue_frame(GreetingFrame(context=context))
 
     @transport.event_handler("on_client_disconnected")
     async def disconnected(_, __):
@@ -350,6 +388,7 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
         await end("gone")
 
     capping = asyncio.ensure_future(cap())
+    took["setup_ms"] = round((time.perf_counter() - started) * 1000)
     try:
         await PipelineRunner(handle_sigint=False).run(task)
     finally:

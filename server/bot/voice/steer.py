@@ -90,6 +90,11 @@ def knowledge_lines(rows: list[str]) -> str:
 LOOK_EVERY_S, LOOK_BEATS = 1.8, 4  # about seven seconds of looking; past that, quiet is honest
 
 
+class GreetingFrame(LLMContextFrame):
+    """The model's opening line for a returning player (voice/bot.py greet): no one spoke, so there is no turn for Jev,
+    memory or the outcomes to read; it goes straight through to the model."""
+
+
 class PolicySteer(FrameProcessor):
     """The gap after the user stops is filled on one clock from that moment: a reflex at once, typing if the persona is doing something, a spoken bridge at bridge_after_s, a stall at stall_after_s. The first LLM text ends all of it. A greeting or an aside gets none of it, and one spoken filler per gap: after a reflex only the stall can follow."""
 
@@ -392,7 +397,9 @@ class PolicySteer(FrameProcessor):
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
-        if isinstance(frame, LLMContextFrame):
+        if isinstance(frame, GreetingFrame):
+            pass
+        elif isinstance(frame, LLMContextFrame):
             await self.on_context(frame.context, speculative=getattr(frame, "speculation", False))
         elif isinstance(frame, InterruptionFrame):
             self.on_llm_text()

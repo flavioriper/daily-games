@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from fastapi import FastAPI, WebSocket
+from loguru import logger
 from fastapi.responses import FileResponse
 from starlette.websockets import WebSocketDisconnect
 
@@ -88,6 +89,20 @@ async def stub_run_call(websocket, card, user_id, session_id, deps, store) -> No
     await wait_for_bye(websocket)
 
 
+def warm_call() -> None:
+    """What a call loads on first use, loaded once at startup on a worker thread: the voice pipeline's imports (Pipecat,
+    torch), the memory's embedding model and its gate. Only a warm-up: a failure here leaves the first call to load them."""
+    try:
+        import voice.bot  # noqa: F401
+        from memory.device import DeviceHub, DeviceStore
+        from memory.embed import embed
+
+        embed(["warm"])
+        DeviceHub(DeviceStore(lambda _: None))
+    except Exception as e:
+        logger.warning(f"call warm-up failed: {type(e).__name__}")
+
+
 async def voice_run_call(websocket, card, user_id, session_id, deps, store) -> None:
     """The call (voice/bot.py), imported on first use so the socket's tests never load the pipeline."""
     from voice.bot import run_call
@@ -133,11 +148,13 @@ def build_app(deps: Deps | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(_):
         warming = asyncio.ensure_future(deps.shared.warm()) if getattr(deps.shared, "online", False) else None  # the model loads beside /health and the first call, never in front of them
+        priming = asyncio.ensure_future(asyncio.to_thread(warm_call)) if deps.run_call is voice_run_call else None  # the first call on an instance waited 15 s for these (2026-11-06)
         try:
             yield
         finally:
-            if warming is not None:
-                warming.cancel()
+            for t in (warming, priming):
+                if t is not None:
+                    t.cancel()
             from shared import distil
 
             await distil.cancel_pending()  # a call's lessons still being distilled are dropped, never queued
@@ -225,7 +242,9 @@ def build_app(deps: Deps | None = None) -> FastAPI:
             await websocket.send_json({"type": "session", "session_id": session_id})
             await websocket.send_json({"type": "tool", "name": "voice", "cmd": seat_of(card)[2]})  # the phone keeps it and sends it in every later hello
             websocket.state.screen = hello.get("screen") if isinstance(hello.get("screen"), int) else 1  # what the phone's face can do (bot/call.gd SCREEN_LEVEL); older builds send none
+            loading = time.perf_counter()
             store = await DeviceStore.load(hello.get("memory") or {}, Phone.of(websocket).send)  # the player's memory, in RAM for this call; every change goes back as `memory`
+            websocket.state.memory_ms = round((time.perf_counter() - loading) * 1000)  # for the call's setup line (voice/bot.py setup_line)
             await deps.run_call(websocket, card, uid, session_id, deps, store)
         except WebSocketDisconnect:
             pass
