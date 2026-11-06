@@ -51,7 +51,7 @@ def test_tool_words_have_no_desktop():
     assert LOOK_WORDS == ["ahead", "point", *DIRECTIONS]
     assert IDLE == ["ahead", "wander", "doze"]
     assert "point" in PLACES and not any("panel" in p for p in PLACES)
-    assert box().names() == ["swarm", "move", "draw", "dots", "tone", "see"]
+    assert box().names() == ["swarm", "move", "draw", "dots", "tone", "voice", "see"]
     for tool in SCREEN:
         words = [tool["description"]] + [json.dumps(p) for p in tool["properties"].values()]
         for w in words:

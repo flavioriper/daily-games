@@ -320,7 +320,7 @@ func _on_foreground() -> void:
 	if not visible or not _cut or _phase != "offline":
 		return
 	_cut = false
-	face.say(tr("SWARM_L1"))
+	face.say(tr(BotVoice.line_key("SWARM_L1")))
 	face.reveal(-1)
 	_status.text = tr("BOT_REDIAL")
 
@@ -506,6 +506,9 @@ func _tool(name: String, msg: Dictionary) -> void:
 			BotCall.seen(String(msg.get("id", "")), Marshalls.base64_to_raw(String(got.jpg)), int(got.w), int(got.h))
 		return
 	var cmd: Variant = msg.get("cmd")
+	if name == "voice":
+		BotVoice.keep(String(cmd))  # the server's pick at the start, or the player asked for the other voice
+		return
 	if not (name in TOOLS) or not (cmd is Dictionary):
 		return
 	match name:

@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse
 from starlette.websockets import WebSocketDisconnect
 
 from bot.auth import Unauthorized, verify
-from bot.cards import CLIPS, LANGUAGES, load_card, clip_card
+from bot.cards import CLIPS, LANGUAGES, accent_for, load_card, clip_card, pick_gender, seat_of
 from memory.device import DeviceStore
 from studio.clips import has_clips
 from voice.phone import Phone
@@ -198,7 +198,8 @@ def build_app(deps: Deps | None = None) -> FastAPI:
             return await refuse(websocket, UNAUTHORIZED)
         language = hello.get("language")
         language = language if language in LANGUAGES else "en"
-        card = load_card(language)
+        region = hello.get("region")
+        card = load_card(language, accent_for(language, region if isinstance(region, str) else None), pick_gender(hello.get("voice")))  # no voice yet: a coin toss the phone keeps (the `voice` frame below)
 
         # no await between these checks and taking the uid, so two hellos cannot both pass
         if uid in live:
@@ -213,13 +214,16 @@ def build_app(deps: Deps | None = None) -> FastAPI:
                 recent = None
         if recent is not None and len(recent) >= deps.calls_per_window:
             return await refuse(websocket, RATE_LIMITED)
-        if not has_clips(clip_card(card), deps.clips_root):  # the clip tools look in <root>/<card.slug>; clip_card makes the slug the language
+        if not has_clips(clip_card(card), deps.clips_root):  # the clip tools look in <root>/<card.slug>; clip_card makes the slug the voice's folder
+            card = load_card(language, None, seat_of(card)[2])  # an accent whose clips are missing speaks with the language's default
+        if not has_clips(clip_card(card), deps.clips_root):
             return await refuse(websocket, NO_CLIPS)
         live.add(uid)
         starts.setdefault(uid, deque()).append(now)
         try:
             session_id = uuid.uuid4().hex
             await websocket.send_json({"type": "session", "session_id": session_id})
+            await websocket.send_json({"type": "tool", "name": "voice", "cmd": seat_of(card)[2]})  # the phone keeps it and sends it in every later hello
             store = await DeviceStore.load(hello.get("memory") or {}, Phone.of(websocket).send)  # the player's memory, in RAM for this call; every change goes back as `memory`
             await deps.run_call(websocket, card, uid, session_id, deps, store)
         except WebSocketDisconnect:

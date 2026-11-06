@@ -104,6 +104,61 @@ never given a non-zero sample in the call (`_mic_alive`): a refused mic
 never does, a phone gating a quiet room to zeros did once. Draw calls on the
 live room with three lines of subtitles: 27 (39 with the button).
 
+## The ten voices (2026-11-06)
+
+Boyd's low rasp is gone. The user's rule for any Swarm voice: "a warm,
+playful and kind voice, full of energy but also supportive. It should sound
+like someone ready to play, but that can't wait to know you more." Picked by
+ear from a listening page (https://claude.ai/artifact/Q1ZaoVAfb4nTBWQy5rEF75,
+the same hello in each candidate from ElevenLabs' shared library, filtered
+by those tags and by a year's use), a woman's and a man's voice per accent:
+
+| | woman | man |
+|---|---|---|
+| en, US | Jessica | Drew |
+| en, UK (GB, IE) | Lucy | Conversational Joe |
+| pt, Brazil | Raquel | Will (supportive) |
+| es, Latin America | Daniela | Mario |
+| es, Spain (ES) | Raquel | Rafa N |
+
+The ids, accents and regions are `server/bot/seeds/swarm_voices.json`, read
+by `bot/cards.py` and `tools/gen_swarm_voice.py`; the game's
+`bot/bot_voice.gd` keeps the same accents and regions in its own consts.
+These are community voices: their owners can take them down, which is the
+licence review still owed.
+
+- **Which one a player hears.** No button (the user: "we not gonna use
+  buttons, so player can ask to switch voice"). The first time it is a coin
+  toss (the user: random per player), on the phone (`BotVoice.gender()`,
+  kept in `user://bot_voice`) so the intro and the call agree; the hello
+  carries `voice` and `region` (`OS.get_locale()`'s country). The server
+  answers every session with `tool {name: voice, cmd}` and the phone keeps
+  it; an old phone with no `voice` gets a server coin toss the same way.
+- **Switching mid-call**: the `voice` tool (`female`/`male`, same language
+  and accent). `run_call` loads the other voice's clips beside the call's at
+  the start (`ClipPlayer.keep`), so a switch is `ClipPlayer.use` plus a
+  `TTSUpdateSettingsFrame` aimed at the TTS: ElevenLabs' dialogue socket
+  registers the voice per reply, so the next sentence is in the new voice
+  with no reconnect. The tool's result tells the model which forms to use
+  for itself from then on.
+- **Speaking of itself**: `load_card` adds one line to the identity
+  (Portuguese and Spanish mark it: feita/feito, hecha/hecho), and
+  `lines_<lang>_female` in the seed overrides the clip lines that do
+  ("eu sou a Swarm", "obrigada", "Quase pronta", "Casi lista", the
+  disclosure). The intro has `SWARM_L1_F`; `BotVoice.GENDERED` lists the
+  keys with a feminine row.
+- **Clips**: ten server sets, `voices/swarm/<language>-<accent>-<gender>/`
+  (45 clips, ~3 MB each), rendered with `studio.clips.render_clips` over
+  `clip_card(load_card(...))` for every voice; an accent whose set is
+  missing speaks with the language's first accent. The intro: 80 mp3s,
+  `assets/voice/swarm/<KEY>_<set>.mp3`, `python3 tools/gen_swarm_voice.py`,
+  then `godot --headless --path . --import`.
+- **Owed**: a deploy (`tools/deploy_bot.sh`, person-run: the image bakes the
+  new sets, and the live server still expects the old `en`/`pt`/`es`
+  folders, so an old server with a new phone is fine and a new server needs
+  this image); hearing a switch on a real call; the pt/es feminine lines by
+  a native speaker.
+
 ## Echo cancelling: why the phone call felt worse than persona-studio (2026-11-05 night)
 
 The user: "Bot here can't properly understand pauses, i talk and he answer 3

@@ -1,3 +1,14 @@
 # The two audiobook voices. More library voices need listening with a key (spec section 6).
 - {voice_id: oFnUs65XPN5XcT0txEbR, name: Veronica, sex: female, age: adult, texture: "the audiobook's narrator", languages: [en]}
 - {voice_id: gfRt6Z3Z8aTbpLfexQ7N, name: Boyd, sex: male, age: fifties, texture: "low, unhurried, slight rasp", languages: [en]}
+# The Swarm's ten (the user's picks, 2026-11-06: warm, playful and kind, full of energy but supportive); bot/cards.py VOICES is what the call uses.
+- {voice_id: r1KmysJdVYZjJCm4mL3b, name: Jessica, sex: female, age: young, texture: "playful, bright, warm; US", languages: [en]}
+- {voice_id: q0IMILNRPxOgtBTS4taI, name: Drew, sex: male, age: young, texture: "casual, curious, fun; US", languages: [en]}
+- {voice_id: Gv42yFG3G6CHLsU5y8g6, name: Lucy, sex: female, age: young, texture: "charming, upbeat, kind; UK", languages: [en]}
+- {voice_id: Tx7VLgfksXHVnoY6jDGU, name: Conversational Joe, sex: male, age: adult, texture: "chatty, like an old friend; UK", languages: [en]}
+- {voice_id: GDzHdQOi6jjf8zaXhCYD, name: Raquel, sex: female, age: young, texture: "expressive, energetic; Brazil", languages: [pt]}
+- {voice_id: ec54d9BmuMSN4IinPrjv, name: Will, sex: male, age: adult, texture: "friendly, inviting, supportive; Brazil", languages: [pt]}
+- {voice_id: ajOR9IDAaubDK5qtLUqQ, name: Daniela, sex: female, age: young, texture: "warm, clear, positive; Latin America", languages: [es]}
+- {voice_id: tomkxGQGz4b1kE0EM722, name: Mario, sex: male, age: young, texture: "animated, chatty; Latin America", languages: [es]}
+- {voice_id: 1eHrpOW5l98cxiSRjbzJ, name: Raquel, sex: female, age: young, texture: "young, bright, cheerful; Spain", languages: [es]}
+- {voice_id: iJQjCIhyynnZMKT6NN3H, name: Rafa N, sex: male, age: adult, texture: "joyful, lively, expressive; Spain", languages: [es]}

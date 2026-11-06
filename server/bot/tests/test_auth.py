@@ -109,14 +109,17 @@ def _verify(token):
 
 
 def _clips(languages):
-    """A clips folder holding a manifest for each language, as the shipped one does."""
+    """A clips folder holding a manifest for each of a language's voices, as the shipped one does."""
     import tempfile
     from pathlib import Path
 
+    from bot.cards import VOICES
+
     root = Path(tempfile.mkdtemp())
-    for language in languages:
-        (root / language).mkdir()
-        (root / language / "manifest.json").write_text(json.dumps({}))
+    for language, accent, gender in VOICES:
+        if language in languages:
+            (root / f"{language}-{accent}-{gender}").mkdir()
+            (root / f"{language}-{accent}-{gender}" / "manifest.json").write_text(json.dumps({}))
     return root
 
 
@@ -217,6 +220,12 @@ def test_a_refused_call_does_not_use_up_the_hourly_allowance():
         with client.websocket_connect("/ws/bot") as ws:
             hello(ws)
             assert closed_with(ws) == 4409
+
+
+def test_the_shipped_clips_cover_every_voice():
+    from bot.cards import CLIPS, VOICES
+    missing = [f"{l}-{a}-{g}" for l, a, g in VOICES if not (CLIPS / f"{l}-{a}-{g}" / "manifest.json").exists()]
+    assert missing == []
 
 
 def test_the_shipped_clips_cover_en_pt_es():
@@ -329,8 +338,55 @@ def test_default_run_call_stub_ends_on_bye():
     with client.websocket_connect("/ws/bot") as ws:
         hello(ws)
         ws.receive_json()
+        assert ws.receive_json() == {"type": "tool", "name": "voice", "cmd": ANY_GENDER}
         ws.send_json({"type": "bye"})
         assert closed_with(ws) == 1000
+
+
+class _AnyGender:
+    def __eq__(self, other):
+        return other in ("female", "male")
+
+
+ANY_GENDER = _AnyGender()
+
+
+def test_the_hello_picks_the_voice_from_region_and_voice():
+    client, calls = make()
+    with client.websocket_connect("/ws/bot") as ws:
+        hello(ws, language="es", region="ES", voice="male")
+        assert ws.receive_json()["type"] == "session"
+        assert ws.receive_json() == {"type": "tool", "name": "voice", "cmd": "male"}  # the phone keeps what it sent
+        ws.send_json({"type": "bye"})
+    (card, *_), = calls.args
+    from bot.cards import VOICES
+    assert card.voice.voice_id == VOICES[("es", "spain", "male")][0]
+
+
+def test_a_hello_with_no_voice_gets_one_and_is_told_it():
+    client, calls = make()
+    with client.websocket_connect("/ws/bot") as ws:
+        hello(ws, language="en", region="GB")
+        assert ws.receive_json()["type"] == "session"
+        told = ws.receive_json()["cmd"]
+        ws.send_json({"type": "bye"})
+    (card, *_), = calls.args
+    from bot.cards import VOICES
+    assert told in ("female", "male") and card.voice.voice_id == VOICES[("en", "uk", told)][0]
+
+
+def test_a_missing_accent_set_speaks_with_the_language_default():
+    import shutil
+    root = _clips(("es",))
+    shutil.rmtree(root / "es-spain-female")
+    client, calls = make(clips_root=root)
+    with client.websocket_connect("/ws/bot") as ws:
+        hello(ws, language="es", region="ES", voice="female")
+        assert ws.receive_json()["type"] == "session"
+        ws.send_json({"type": "bye"})
+    (card, *_), = calls.args
+    from bot.cards import VOICES
+    assert card.voice.voice_id == VOICES[("es", "latam", "female")][0]
 
 
 def test_binary_first_frame_closes_4401():

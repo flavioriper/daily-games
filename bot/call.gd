@@ -149,8 +149,8 @@ static func testers_build() -> bool:
 	return OS.is_debug_build() or OS.has_feature("beta")
 
 
-## Dials `url` and says hello with the token, the language and the phone's
-## memory file. An empty token is offline: `ended("offline")` next frame. A
+## Dials `url` and says hello with the token, the language, the phone's
+## memory file, its region and the player's voice (BotVoice). An empty token is offline: `ended("offline")` next frame. A
 ## second start while a call is live is refused with a warning and emits
 ## nothing (one call at a time; the live call's `ended` is still to come).
 static func start(host: Node, address: String, token: String, memory: Dictionary, language: String) -> void:
@@ -164,7 +164,7 @@ static func start(host: Node, address: String, token: String, memory: Dictionary
 	c.name = "BotCall"
 	c.process_mode = Node.PROCESS_MODE_ALWAYS
 	c._t0 = Time.get_ticks_msec()
-	c._hello = {"type": "hello", "token": token, "language": language, "memory": memory}
+	c._hello = {"type": "hello", "token": token, "language": language, "memory": memory, "region": BotVoice.region(), "voice": BotVoice.gender()}
 	c._peer.inbound_buffer_size = 1 << 20  # replies come in bursts faster than they play
 	c._peer.outbound_buffer_size = 1 << 20
 	c._peer.max_queued_packets = 8192

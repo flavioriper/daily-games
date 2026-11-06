@@ -1,0 +1,17 @@
+{
+ "_": "The Swarm's ten voices, the user's picks of 2026-11-06 (warm, playful and kind, full of energy but supportive). Read by bot/cards.py, tools/gen_swarm_voice.py; the game's bot/bot_voice.gd keeps the same accents and regions.",
+ "accents": {"en": ["us", "uk"], "pt": ["br"], "es": ["latam", "spain"]},
+ "regions": {"en": {"GB": "uk", "IE": "uk"}, "es": {"ES": "spain"}},
+ "voices": {
+  "en-us-female": ["r1KmysJdVYZjJCm4mL3b", "Jessica"],
+  "en-us-male": ["q0IMILNRPxOgtBTS4taI", "Drew"],
+  "en-uk-female": ["Gv42yFG3G6CHLsU5y8g6", "Lucy"],
+  "en-uk-male": ["Tx7VLgfksXHVnoY6jDGU", "Conversational Joe"],
+  "pt-br-female": ["GDzHdQOi6jjf8zaXhCYD", "Raquel"],
+  "pt-br-male": ["ec54d9BmuMSN4IinPrjv", "Will"],
+  "es-latam-female": ["ajOR9IDAaubDK5qtLUqQ", "Daniela"],
+  "es-latam-male": ["tomkxGQGz4b1kE0EM722", "Mario"],
+  "es-spain-female": ["1eHrpOW5l98cxiSRjbzJ", "Raquel"],
+  "es-spain-male": ["iJQjCIhyynnZMKT6NN3H", "Rafa N"]
+ }
+}

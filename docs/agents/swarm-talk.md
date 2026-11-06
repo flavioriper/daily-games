@@ -21,7 +21,8 @@ go (`ui/menu/swarm_talk.gd`, wired in `ui/menu/swarm_tab.gd`).
 2. Deepgram `nova-3` hears it in the game's language (REST, one request).
 3. `gpt-6-luna` (low reasoning) answers in one or two spoken sentences, the
    game's language, the last twelve turns kept.
-4. ElevenLabs says it in the swarm's voice (Boyd, `eleven_v4_turbo`,
+4. ElevenLabs says it in the swarm's voice (Boyd then; since 2026-11-06 the
+   player's voice, `docs/agents/bot.md` "The ten voices"; `eleven_v4_turbo`,
    stability 0.5, as `tools/gen_swarm_voice.py`) `with-timestamps`, so the
    reply plays through the same path as the pre-made lines: words appear as
    said, the analyser drives the face.

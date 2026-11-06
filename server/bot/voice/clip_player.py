@@ -53,25 +53,44 @@ def spoken(text: str) -> str:
 FALLBACK = {"thinking": "bridges", "stalls": "bridges", "reaching": "bridges", "searching": "bridges"}  # cards from before these kinds existed
 
 
+def load_set(root, card) -> tuple[dict[str, list[bytes]], dict[str, list[str]]]:
+    """One voice's clips (<root>/<card.slug>/manifest.json) and, where the manifest lines up with the card's lines, their words."""
+    clips: dict[str, list[bytes]] = {}
+    texts: dict[str, list[str]] = {}
+    manifest = Path(root) / card.slug / "manifest.json"
+    if manifest.exists():
+        for kind, names in json.loads(manifest.read_text()).items():
+            clips[kind] = []
+            for name in names:
+                with wave.open(str(manifest.parent / name)) as w:
+                    clips[kind].append(w.readframes(w.getnframes()))
+            lines = getattr(card.lines, kind, None)
+            lines = [lines] if isinstance(lines, str) else lines
+            if isinstance(lines, list) and len(lines) == len(names):
+                texts[kind] = lines
+    return clips, texts
+
+
 class ClipPlayer:
     def __init__(self, out, root, card, on_said=None):
         """`on_said` gets a clip's line just before it plays, when the manifest lines up with the card's lines (render_clips writes them in order)."""
         self.out, self.on_said = out, on_said
         self._rng = random.Random()
-        self._clips: dict[str, list[bytes]] = {}
-        self._texts: dict[str, list[str]] = {}
         self.last_said: str | None = None  # the line the last play sent to on_said, None when it sent none
-        manifest = Path(root) / card.slug / "manifest.json"
-        if manifest.exists():
-            for kind, names in json.loads(manifest.read_text()).items():
-                self._clips[kind] = []
-                for name in names:
-                    with wave.open(str(manifest.parent / name)) as w:
-                        self._clips[kind].append(w.readframes(w.getnframes()))
-                lines = getattr(card.lines, kind, None)
-                lines = [lines] if isinstance(lines, str) else lines
-                if isinstance(lines, list) and len(lines) == len(names):
-                    self._texts[kind] = lines
+        self._clips, self._texts = load_set(root, card)
+        self._sets = {card.slug: (self._clips, self._texts)}
+
+    def keep(self, root, card) -> None:
+        """Loads another voice's set beside this one, so `use` never reads the disk mid-call."""
+        if card.slug not in self._sets:
+            self._sets[card.slug] = load_set(root, card)
+
+    def use(self, slug: str) -> bool:
+        """Plays from the set kept under `slug` from now on; False (and nothing changes) when there is none."""
+        if slug not in self._sets or not self._sets[slug][0]:
+            return False
+        self._clips, self._texts = self._sets[slug]
+        return True
 
     async def play(self, kind: str, gain: float = 1.0) -> float:
         """Pushes one clip of `kind` and returns its length in seconds (0 when there is none)."""

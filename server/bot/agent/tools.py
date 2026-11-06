@@ -45,7 +45,7 @@ HEX = re.compile(r"#?[0-9a-fA-F]{6}")
 DOTS = (1, 2400)
 DOTS_FROM, DOTS_TO = ["face", "edges", "point"], ["fade", "face", "edges"]
 ROWS_MOST = 96
-COMMANDS = ("swarm", "move", "draw", "dots", "tone")  # result keys the phone applies, sent as `tool {name, cmd}`
+COMMANDS = ("swarm", "move", "draw", "dots", "tone", "voice")  # result keys the phone applies, sent as `tool {name, cmd}` (the phone keeps `voice` for the next hello)
 SCREEN = [
     {"name": "swarm", "label": "Looking", "description": (
         "Control your eyes on the person's phone screen, where your body is a swarm of glowing dots that forms your face. Takes effect at once; when they asked for it, say in a few words what you did, in the first person. Pass look, idle, or both. "
@@ -99,6 +99,10 @@ SCREEN = [
         "Fit it to the moment or to a drawing (gold for a sun, pink for a heart), and go back to green when the moment is over."),
      "properties": {"tone": {"type": "string", "description": "A name or #rrggbb"}, "intensity": {"type": "number", "description": "0.2 to 1.8"}, "seconds": {"type": "number", "description": "Optional: a flash of this many seconds (0.5 to 30)"}},
      "required": [], "timeout": 2},
+    {"name": "voice", "label": "Changing voice", "description": (
+        "Switch the voice you speak with: `female` (a woman's) or `male` (a man's), in the same language and accent. Only when they ask for another voice; "
+        "it takes effect from your next sentence and stays for their later calls. Say a few words in the new voice so they hear it."),
+     "properties": {"voice": {"type": "string", "enum": ["female", "male"]}}, "required": ["voice"], "timeout": 2},
     {"name": "see", "label": "Looking at the screen", "description": (
         "Look at your own screen: you get a picture of it as it is now (only your room: your dots, your words). "
         "Use it after you draw, to check the drawing reads as what you meant; if it does not, change it (simpler rows, bolder shape, another tone, more dots) and look again, at most twice. "
@@ -376,6 +380,14 @@ class Toolbox:
             cmd["seconds"] = seconds
         what = " ".join(x for x in (cmd.get("tone"), f"at {cmd['intensity']:g}" if "intensity" in cmd else "") if x)
         return {"summary": f"Done: my dots are {what}" + (f" for {seconds:g} s, then back" if seconds else ""), "tone": cmd}
+
+    async def voice(self, call, turn, voice: str = "") -> dict:
+        if no := self._screen("voice"):
+            return no
+        if voice not in ("female", "male"):
+            return {"error": "voice must be female or male"}
+        forms = "feminine" if voice == "female" else "masculine"
+        return {"summary": f"Done: from your next sentence you speak with a {'woman' if voice == 'female' else 'man'}'s voice. When your language marks gender, speak of yourself in the {forms} from now on.", "voice": voice}
 
     async def see(self, call, turn) -> dict:
         """The one screen tool that waits on the phone: its snapshot goes to the eye, and the voice hears the eye's words. The picture is not kept anywhere."""

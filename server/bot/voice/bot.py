@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from loguru import logger
-from pipecat.frames.frames import InterruptionFrame
+from pipecat.frames.frames import InterruptionFrame, TTSUpdateSettingsFrame
 
 from pipecat.expressive.policy import ExpressionGuidance, ExpressionPolicy
 from pipecat.observers.user_bot_latency_observer import UserBotLatencyObserver
@@ -25,7 +25,7 @@ from pipecat.turns.user_turn_strategies import UserTurnStrategies
 from agent.eye import MODEL as EYE_MODEL, Eye
 from agent.tools import COMMANDS, TIMEOUT, Toolbox, result_text
 from bot.app import save_ledger
-from bot.cards import CLIPS, clip_card
+from bot.cards import CLIPS, clip_card, load_card, other_gender, seat_of
 from memory.device import DeviceHub, DeviceStore
 from memory.turn import MemoryTurn
 from policy.learn import BaseLearner, load_base
@@ -227,7 +227,11 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
     context = LLMContext(tools=toolbox.pipecat_schema())
     pair = LLMContextAggregatorPair(context, user_params=LLMUserAggregatorParams(user_turn_strategies=strategies(card)))
     clip_out, pace = ClipOut(on_stage=stage, on_said=phone.said), PaceProcessor()
-    player = await asyncio.to_thread(ClipPlayer, clip_out, _dep(deps, "clips_root", CLIPS), clip_card(card), phone.said)  # clips live under the language; everything else keys on the real card
+    clips_root = _dep(deps, "clips_root", CLIPS)
+    player = await asyncio.to_thread(ClipPlayer, clip_out, clips_root, clip_card(card), phone.said)  # clips live under the voice; everything else keys on the real card
+    language, accent, gender = seat_of(card)
+    other = load_card(language, accent, other_gender(gender))  # the voice the player can ask for (the `voice` tool), its clips in RAM beside these
+    await asyncio.to_thread(player.keep, clips_root, clip_card(other))
     card = with_style(card, await styling)
     s = _dep(deps, "services", make_services)(card)
 
@@ -244,11 +248,24 @@ async def run_call(websocket, card: Card, user_id: str, session_id: str, deps, s
     async def act(params) -> None:
         turn = sum(m.get("role") == "user" for m in context.messages)
         result = await toolbox.run(params.function_name, dict(params.arguments), turn)
+        if "voice" in result:
+            await switch_voice(result["voice"])
         for key in COMMANDS:
             if key in result:
                 phone.send({"type": "tool", "name": key, "cmd": result[key]})
         await params.result_callback(result_text({k: v for k, v in result.items() if k not in COMMANDS}))  # the command is the phone's; the voice hears what was done
 
+    async def switch_voice(gender: str) -> None:
+        """The voice and its clips change from the next sentence; the language and accent stay (the user, 2026-11-06: the player asks to switch)."""
+        to = load_card(language, accent, gender)
+        if to.voice.voice_id == s_voice[0]:
+            return
+        player.use(clip_card(to).slug)
+        await task.queue_frame(TTSUpdateSettingsFrame(delta=type(s.tts._settings)(voice=to.voice.voice_id), service=s.tts))
+        s_voice[0] = to.voice.voice_id
+        log(kind="voice")
+
+    s_voice = [card.voice.voice_id]
     for name in toolbox.names():
         s.llm.register_function(name, act, timeout_secs=TIMEOUT[name])
 

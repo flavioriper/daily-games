@@ -1147,7 +1147,7 @@ func _run_script(dt: float) -> void:
 	if _think_t > 0.0:
 		_think_t -= dt
 		if _think_t <= 0.0:
-			_line = tr(_pending_say)
+			_line = tr(BotVoice.line_key(_pending_say))
 			_line_t = 0.0
 			_line_len = _line.length() / 16.0 + 0.3
 			_start_voice(_pending_say)
@@ -1262,22 +1262,25 @@ func _rest() -> void:
 	apply_swarm({"look": "ahead", "idle": "wander"})
 	demo_changed.emit()
 
-## The line's clip in the game's language (English when it has none), and
-## when each of its characters is said; without a clip the line is shown at
-## a reading pace and the level is made up.
+## The line's clip in the player's voice (BotVoice: language, accent of the
+## phone's region, a woman's or a man's; the language's first accent when
+## that one has none), and when each of its characters is said; without a
+## clip the line is shown at a reading pace and the level is made up.
 func _start_voice(key: String) -> void:
 	_voiced = false
 	_starts = PackedFloat32Array()
 	var lang := TranslationServer.get_locale().substr(0, 2)
-	for l in [lang, "en"]:
-		var stem := "%s_%s" % [key, l]
+	if not BotVoice.ACCENTS.has(lang):
+		lang = "en"
+	var mine := BotVoice.voice_set(lang)
+	for vs in [mine, "%s-%s-%s" % [lang, BotVoice.ACCENTS[lang][0], BotVoice.gender()]]:
+		var stem := "%s_%s" % [key, vs]
 		var path := VOICE_DIR + stem + ".mp3"
 		if not ResourceLoader.exists(path):
 			continue
 		var t: Dictionary = _times.get(stem, {})
 		if t.is_empty() or String(t.get("text", "")) != _line:
-			if l != lang:
-				continue  # English audio under other words would not match
+			continue  # audio under other words would not match
 		_player.stream = load(path)
 		_player.play()
 		_voiced = true
