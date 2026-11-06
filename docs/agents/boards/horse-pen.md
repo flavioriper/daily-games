@@ -223,15 +223,20 @@ fields are rectangles).
   boulders stay on it, the horse stands on a non-edge cell, and `widest` and
   `MAX_PEN` count the grass, not the box. `pack`/`unpack` carry a `void`
   list (empty on the bank's rectangles).
-- **The phone lays it** (the bank is rectangles): `GROWS_THEME` 40 pens and
-  `STEPS_THEME` 2000 steps a layout, `ATTEMPTS_THEME` 24 layouts a thing,
+- **The phone lays it** (the bank is rectangles): `GROWS_THEME` 80 pens and
+  `STEPS_THEME` 3000 steps a layout, `ATTEMPTS_THEME` 24 layouts a thing,
   each thing on its own rng (`rng.seed ^ hash(id)`); none passing
   `generate`'s own gates deals the bank's meadow off the untouched rng, as
-  before. `tests/_probe_hp_theme.gd` (headless, the cached nights
-  20261102-07): 22 of 24 band-days themed; the live best is 88-100% of a
-  miner-length search of the same meadow (200 pens, 120,000 steps; 20 of 22
-  equal), so the stars still mean what they did; slowest deal 453 ms on
-  this Mac (a rectangle after every thing failed: 328 ms). For comparison the old fallback
+  before. **No wall-clock cut-off, ever**: every phone must lay the same
+  meadow with the same `best`, or players get different star targets. A
+  shaped meadow's smallest pen is the band's `pen` times its grass over the
+  band's rectangle (the same share): at the rectangle's `pen` most layouts
+  failed as too small, and that, not the search, was the deal's time (453
+  ms worst, 2 of 24 band-days falling back; scaled: 24 of 24, 144 ms).
+  `tests/_probe_hp_theme.gd` (headless, the cached nights 20261102-07):
+  the live best is 97-100% of a miner-length search of the same meadow
+  (200 pens, 120,000 steps; 22 of 24 equal), so the stars still mean what
+  they did. Easy pens are 11-15 cells. For comparison the old fallback
   (`GROWS_LIVE`/`STEPS_LIVE`) sits at 84-94% of the bank's best on Hard and
   Insane rectangles (`base`).
 - **In play** the field is drawn a cell at a time over a dark rim
@@ -251,7 +256,13 @@ fields are rectangles).
   seconds of launch lost its flowers (and now its picture); the sentinel is
   `-INF`.
 - Checked on the 20261107 cached night, `opengl3_angle`, 810x1440
-  (`tests/_shot_horse.gd -- theme`): Medium cactus solve 155 draw calls peak,
-  Insane glaze jar 154, Hard restore 90; `_win.gd -- horse` PASS. Owed: a
-  phone (the deal's time there), the user's ear on the cue, pt/es read by a
-  native.
+  (`tests/_shot_horse.gd -- theme`, which re-deals from the cache): Medium
+  cactus solve 155 draw calls peak, Insane glaze jar 154, Hard restore 90,
+  Hard stroll 94 (the horse trots to a way out on the shape).
+  `_win.gd -- horse` PASS on a 9x9 meadow, i.e. through the real path
+  (`_night_pictures` -> `ThemedPictures.picture`), not the re-deal. The
+  shots were taken before the scaled pen gate, so today's meadows differ.
+  Owed: the peek's lean toward the void (between frames, unseen), the bulb
+  on a themed answer, a phone (the deal's time there), the user's ear on
+  the cue, pt/es read by a native. `day_dict`'s view marks void cells
+  `{"void": true}`; unchecked against the days dashboard.

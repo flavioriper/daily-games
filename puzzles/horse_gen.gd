@@ -57,8 +57,8 @@ const STEPS_LIVE := 400
 ## A themed day's meadow is laid on the phone (the bank is rectangles):
 ## a longer look than the fallback's, since its best sets the stars, and a
 ## few layouts before the bank deals instead.
-const GROWS_THEME := 40
-const STEPS_THEME := 2000
+const GROWS_THEME := 80
+const STEPS_THEME := 3000
 const ATTEMPTS_THEME := 24
 const GROWS_MINE := 200
 const STEPS_MINE := 120000
@@ -83,6 +83,12 @@ static func generate(rng: RandomNumberGenerator, band: int,
 		spec["h"] = int(shape.h)
 		spec["void"] = shape.void
 	var lawn := lawn_of(spec)
+	# A shaped meadow asks for the same share of its grass as the band's
+	# rectangle asks of its own.
+	var least := int(spec.pen)
+	if not shape.is_empty():
+		var rect := band_of(band)
+		least = int(round(float(least) * lawn / float(int(rect.w) * int(rect.h))))
 	for _attempt in attempts:
 		var m := _lay(rng, spec)
 		if m.is_empty():
@@ -94,7 +100,7 @@ static func generate(rng: RandomNumberGenerator, band: int,
 		var walls: Array = found.walls
 		# The stock has to matter: a pen closed with bales to spare is a day
 		# with nothing to weigh.
-		if walls.size() < int(spec.budget) - 1 or int(found.pen) < int(spec.pen) \
+		if walls.size() < int(spec.budget) - 1 or int(found.pen) < least \
 				or int(found.pen) > int(MAX_PEN * lawn):
 			continue
 		m["budget"] = int(spec.budget)
