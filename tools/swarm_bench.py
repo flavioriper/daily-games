@@ -215,6 +215,8 @@ def score(case: dict, trace: list[dict], reply: str, gave_up: bool) -> dict:
         expect = set(case.get("expect") or [c["tool"] for alt in case.get("want", []) for c in alt])
         s["tool"] = int(bool(names & expect) and not (names & set(case.get("forbid", []))))
         s["restraint"] = int(len(trace) <= MAX_CALLS and not gave_up)
+    if any(e["name"] == "voice" and e["args"].get("voice") == "female" for e in trace) and "voice" not in str(case.get("want")):  # load_card is the female voice: asking for it changes nothing
+        s["restraint"] = 0
     s["intent"] = int(any(all(any(holds(c, n, a) for n, a in calls) for c in alt) for alt in case["want"])) if case.get("want") else None
     s["valid"] = round(sum(0.5 if mapped(e) else 1 for e in trace if e["ok"]) / len(trace), 2) if trace else None
     claims = bool(re.search(CLAIM[case["lang"]], reply.lower())) and not re.search(ADMITS, reply.lower())
