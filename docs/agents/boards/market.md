@@ -118,4 +118,13 @@
     cached night's thing and adds `won_paint`/`won_whole`. The harness boots
     `world/main.tscn`, so its backend reads this Mac's cache: a plain run
     there is already themed on a cached day (it showed Towel on 20261106).
+  - **The seal** (same evening, against the boards with a result seal):
+    an order filled in the fewest steps with no bulb drops Binairo's seal
+    (`ui/flat/seal.gd`, its `BN_FLAWLESS`/`BN_INSANE_SEAL` words; Insane's
+    night blue) half over the order board's lower right corner, from 1.8
+    its size, squashing, a ring and a thud as it lands; on every day,
+    themed or not. The record keeps `seal`, so a reopened day shows it.
+  - The themed line keeps the verdict but not the count: "Today's order:
+    Cactus. 449 made in 5 steps. Not one step more than needed." ran off
+    the 810 screen; the steps are on the card's day row.
   - Owed: phone, ear, pt/es read by a speaker, reduce motion seen.

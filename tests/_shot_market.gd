@@ -22,6 +22,8 @@ var _diag: Control
 ## `theme` (or `night=YYYYMMDD`): the order is for the newest cached night's
 ## thing (the harness's backend never starts, so it is handed in).
 var _night := ""
+## `nohint`: the bulb is never pressed, so the fewest-steps win stamps its seal.
+var _nohint := false
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -33,6 +35,8 @@ func _initialize() -> void:
 				_page = int(a.substr(4))
 		elif a == "card":
 			_step = 60
+		elif a == "nohint":
+			_nohint = true
 		elif a == "theme":
 			_night = "newest"
 		elif a.begins_with("night="):
@@ -195,7 +199,8 @@ func _process(_delta: float) -> bool:
 			if _f == 3072:
 				print("back stars=%d steps=%d" % [st.stars(), st.steps])
 			if _f == 3080:
-				_b.hint()
+				if not _nohint:
+					_b.hint()
 			if _f == 3080:
 				_shot("hinted")
 				_step = 5
@@ -220,7 +225,7 @@ func _process(_delta: float) -> bool:
 				_shot("won_paint")
 			if _night != "" and _f == 6110:
 				_shot("won_whole")
-				print("subtitle: ", _b.flat_win().subtitle)
+				print("subtitle: ", _b.flat_win().subtitle, " seal=", _b._flawless())
 			if _f == 6240:
 				_shot("won")
 				_host.closed.emit()

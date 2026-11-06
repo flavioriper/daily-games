@@ -49,6 +49,7 @@ const Haptics = preload("res://core/haptics.gd")
 const CozyTheme = preload("res://ui/theme.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
 const ThemedPictures = preload("res://core/themed_pictures.gd")
+const Seal = preload("res://ui/flat/seal.gd")
 
 const Made = State.Made
 const SLOTS := State.SLOTS
@@ -143,6 +144,16 @@ const PAINT_GROW := 0.2
 const PAINT_PALE := 0.82
 const PAINT_PALE_SHADE := 0.12
 const THEME_HOLD := 0.9
+## The seal (2026-11-06, as the boards with a result seal stamp theirs): an
+## order filled in the fewest steps with no bulb drops a gold "Flawless"
+## seal (Insane's night blue) half over the order board's lower right
+## corner, SEAL_AT after the flourish, from SEAL_FROM its size over
+## SEAL_DROP, squashing as it lands. SEAL_R of the board's height.
+const SEAL_AT := 0.45
+const SEAL_FROM := 1.8
+const SEAL_DROP := 0.18
+const SEAL_R := 0.36
+const SEAL_TILT := -0.22
 ## Which night picture a band's order is for, the first the phone holds.
 const THEMED_SIZES := [[10, 12], [10, 12], [12, 10], [12, 10]]
 
@@ -208,6 +219,11 @@ var _sketch_shown: ArrayMesh
 var _sketch_key := ""
 var _paint_shown: ArrayMesh
 var _paint_done := false
+var _paint_side := 0
+## When the seal landed (INF when there is none), and its mesh by size.
+var _seal_at := INF
+var _seal_mesh: ArrayMesh
+var _seal_key := ""
 
 func puzzle_id() -> String: return "market"
 func title() -> String: return "Market Sums"
@@ -283,6 +299,7 @@ func _fresh() -> void:
 	_paint_shown = null
 	_paint_done = false
 	_sketch_key = ""
+	_seal_at = INF
 	_shown_v.clear()
 	_pop_at.clear()
 	_refused_at.clear()
@@ -456,6 +473,8 @@ func _after_win(after: float) -> void:
 		_cue("solved")
 		if themed():
 			_theme_win()
+		if _flawless():
+			_seal_down()
 		if not demo and fx != null:
 			fx.confetti(Vector2(size.x * 0.5, _l("board_y")), 26, size.x * 0.7)
 			# the order filled in the fewest steps there are: the party
@@ -755,6 +774,7 @@ func _draw() -> void:
 	_draw_sliding()
 	_draw_peeks()
 	_draw_count()
+	_draw_seal()
 
 ## The order board and the sign tokens, one mesh while nothing changes.
 func _draw_still() -> void:
@@ -1113,11 +1133,13 @@ func flat_win() -> Dictionary:
 		line = tr("MK_WIN_MORE") % _st.par
 	var made: String = (tr("MK_WIN_ONE") if _st.steps == 1 else tr("MK_WIN_N")) % [_st.target, _st.steps]
 	if themed():
+		# the thing's name takes the place of the count: with both the line
+		# runs off a phone's width (the steps are on the card's day row)
 		return {"faces": [], "subtitle": tr("MK_WIN_THEME") % [String(_theme.name), line]}
 	return {"faces": [], "subtitle": made + " " + line}
 
 func completion_record() -> Dictionary:
-	return {"slots": Array(_st.slots), "steps": _st.steps}
+	return {"slots": Array(_st.slots), "steps": _st.steps, "seal": _flawless()}
 
 ## A finished day reopens with the stall as it was left, the order filled.
 func restore_completed_board() -> void:
@@ -1134,8 +1156,70 @@ func restore_completed_board() -> void:
 	if themed():
 		# a reopened themed day shows the order's thing in its beads
 		_paint_at = _t - 10.0
+	if bool(completed_record.get("seal", false)):
+		_seal_at = _t - 10.0
 	_rate(false)
 	queue_redraw()
+
+# --- the seal ---
+
+## The order filled in the fewest steps there are, the bulb never asked.
+func _flawless() -> bool:
+	return _st.solved() and _st.steps <= _st.par and hints_used == 0 and not demo
+
+## The seal lands SEAL_AT after the flourish (at once under reduce motion),
+## rings and thuds as it does.
+func _seal_down() -> void:
+	if Motion.reduce:
+		_seal_at = _t
+		_buzz_seal()
+		return
+	_seal_at = _t + SEAL_AT + SEAL_DROP
+	var tree := get_tree()
+	if tree != null:
+		tree.create_timer(SEAL_AT + SEAL_DROP, false).timeout.connect(func() -> void:
+			if is_inside_tree():
+				_buzz_seal())
+
+func _buzz_seal() -> void:
+	if fx == null or _L.is_empty():
+		return
+	fx.buzz(Haptics.THUD)
+	fx.ring(_seal_centre(), _l("bh") * SEAL_R * 0.9, Pal.MOON_INK if _band >= 3 else Pal.SUN)
+
+func _seal_centre() -> Vector2:
+	return Vector2(size.x * 0.5 + _l("bw") * 0.5 - _l("bh") * 0.12, _l("board_y") + _l("bh") * 0.42)
+
+## The seal half over the order board's lower right corner: dropping from
+## SEAL_FROM its size, squashing as it lands, then still.
+func _draw_seal() -> void:
+	if _seal_at == INF:
+		return
+	var e := _t - (_seal_at - SEAL_DROP)
+	if e < 0.0:
+		return
+	var rad := _l("bh") * SEAL_R
+	var key := "%d:%d" % [roundi(rad), _band]
+	if key != _seal_key or _seal_mesh == null:
+		_seal_key = key
+		_seal_mesh = Seal.mesh(rad, _band >= 3)
+	var k := 1.0
+	var a := 1.0
+	if not Motion.reduce:
+		if e < SEAL_DROP:
+			var q := e / SEAL_DROP
+			k = lerpf(SEAL_FROM, 1.0, q * q)
+			a = clampf(q / 0.6, 0.0, 1.0)
+		elif e - SEAL_DROP < Motion.BUMP_TIME:
+			k = Motion.bump_scale(e - SEAL_DROP, 0.12)
+	var xf := Transform2D(SEAL_TILT, Vector2.ONE * k, 0.0, _seal_centre()) * Transform2D(0.0, -Vector2.ONE * rad)
+	draw_set_transform_matrix(xf)
+	draw_mesh(_seal_mesh, null, Transform2D(0.0, Vector2.ONE * rad), Color(1, 1, 1, a))
+	var lines := [[tr("BN_INSANE_SEAL"), 0.32, 0.02], [tr("BN_FLAWLESS"), 0.2, 0.36]] if _band >= 3 \
+		else [[tr("BN_FLAWLESS"), 0.3, 0.12]]
+	if a >= 1.0:
+		Seal.text(self, rad, lines)
+	draw_set_transform(Vector2.ZERO)
 
 # --- the daily theme (2026-11-06) ---
 
@@ -1217,6 +1301,10 @@ func _draw_thing(at: Vector2, bh: float) -> void:
 		draw_mesh(_sketch_shown, null, xf, Color(1, 1, 1, fade))
 	if _paint_at == INF or _t < _paint_at:
 		return
+	if roundi(side) != _paint_side:
+		# the board grows into the win's span: the beads follow it
+		_paint_side = roundi(side)
+		_paint_done = false
 	if _paint_shown == null or not _paint_done:
 		var letters: Dictionary = ThemedPictures.letters()
 		var b := Face.Builder.new()
