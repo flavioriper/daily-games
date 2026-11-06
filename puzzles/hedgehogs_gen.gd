@@ -30,6 +30,8 @@ extends RefCounted
 ## number at a time may be left facing when the first pair of numbers is
 ## needed: on Hard and Insane that wall came at the opening itself on one
 ## night in four, and before half way on most.
+const Planes = preload("res://puzzles/planes_state.gd")
+
 const BANDS := [
 	{"cols": 8, "rows": 10, "k": 12, "subsets": false, "need_sub": 0, "open": Vector2i(12, 40), "late": 1.0},
 	{"cols": 9, "rows": 11, "k": 17, "subsets": false, "need_sub": 0, "open": Vector2i(12, 36), "late": 1.0},
@@ -66,18 +68,34 @@ static func neighbours(cols: int, rows: int, c: int) -> PackedInt32Array:
 	return out
 
 ## An empty lawn's dictionary: its size, a neighbour table built once, no
-## hedgehogs yet.
-static func blank(cols: int, rows: int, k: int) -> Dictionary:
+## hedgehogs yet. `void` (1 = not lawn, the day's shape cut round it; empty
+## for the whole rectangle) is kept out of every neighbour list, has none of
+## its own, is never covered, raked, counted or a hedgehog's.
+static func blank(cols: int, rows: int, k: int, void_in := PackedByteArray()) -> Dictionary:
 	var n := cols * rows
+	var voids := PackedByteArray()
+	voids.resize(n)
+	if void_in.size() == n:
+		voids = void_in.duplicate()
 	var nb: Array = []
 	for c in n:
-		nb.append(neighbours(cols, rows, c))
+		var out := PackedInt32Array()
+		if voids[c] == 0:
+			for r in neighbours(cols, rows, c):
+				if voids[r] == 0:
+					out.append(r)
+		nb.append(out)
 	var hog := PackedByteArray()
 	hog.resize(n)
 	var num := PackedInt32Array()
 	num.resize(n)
 	return {"cols": cols, "rows": rows, "n": n, "k": k, "nb": nb, "hog": hog, "num": num,
-		"start": 0, "graded": true, "attempts": 0, "opened": 0, "proof": {}}
+		"void": voids, "start": 0, "graded": true, "attempts": 0, "opened": 0, "proof": {}}
+
+## Whether `c` is outside the day's shape (never on a rectangle).
+static func is_void(g: Dictionary, c: int) -> bool:
+	var v: PackedByteArray = g.get("void", PackedByteArray())
+	return c < v.size() and v[c] == 1
 
 ## Counts every bare cell's hedgehog neighbours; a hedgehog's own is -1.
 static func count(g: Dictionary) -> void:
@@ -180,10 +198,11 @@ static func deduce(g: Dictionary, open: PackedByteArray, known: PackedByteArray,
 			return _found("subset", safe, hogs)
 	var left: int = g.k
 	var unk := {}
+	var voids: PackedByteArray = g.get("void", PackedByteArray())
 	for c in int(g.n):
 		if known[c] == 1:
 			left -= 1
-		elif open[c] == 0:
+		elif open[c] == 0 and (voids.is_empty() or voids[c] == 0):
 			unk[c] = true
 	if not unk.is_empty() and left == 0:
 		return _found("count", unk, {})
@@ -219,7 +238,7 @@ static func prove_from(g: Dictionary, subsets: bool, open_in: PackedByteArray, k
 	var hog: PackedByteArray = g.hog
 	var safe_left := 0
 	for c in n:
-		if hog[c] == 0 and open[c] == 0:
+		if hog[c] == 0 and open[c] == 0 and not is_void(g, c):
 			safe_left += 1
 	var rounds := 0
 	var sub := 0
@@ -254,7 +273,7 @@ static func _warm(g: Dictionary, open_in: PackedByteArray, late: float) -> bool:
 		return true
 	var bare := 0
 	for c in int(g.n):
-		if g.hog[c] == 0 and open[c] == 0:
+		if g.hog[c] == 0 and open[c] == 0 and not is_void(g, c):
 			bare += 1
 	var d := first
 	while not d.is_empty() and d.rule == "single":
@@ -266,7 +285,7 @@ static func _warm(g: Dictionary, open_in: PackedByteArray, late: float) -> bool:
 		d = deduce(g, open, known, false)
 	var left := 0
 	for c in int(g.n):
-		if g.hog[c] == 0 and open[c] == 0:
+		if g.hog[c] == 0 and open[c] == 0 and not is_void(g, c):
 			left += 1
 	return float(left) <= late * float(bare)
 
@@ -275,19 +294,42 @@ static func _warm(g: Dictionary, open_in: PackedByteArray, late: float) -> bool:
 ## of the rest, shuffled. Kept only if the opening flood is in the level's
 ## range and `prove` plays the lawn out; a proof short of the level's subset
 ## quota is kept aside as the fallback, handed back ungraded after ATTEMPTS.
-static func generate(rng: RandomNumberGenerator, d: int) -> Dictionary:
+##
+## `shape` (shape_fit's, the day's thing) lays the lawn in its cut instead:
+## its box, its void, its hedgehogs and opening range scaled to its cells,
+## and the opening only where its whole 3x3 is lawn. A shape that never
+## deals a proved lawn returns {}, and the board deals the rectangle.
+static func generate(rng: RandomNumberGenerator, d: int, shape: Dictionary = {}) -> Dictionary:
 	var bd := band(d)
 	var cols: int = bd.cols
 	var rows: int = bd.rows
+	var k: int = bd.k
+	var span: Vector2i = bd.open
+	var voids := PackedByteArray()
+	var starts: Array[int] = []
+	if not shape.is_empty():
+		cols = int(shape.cols)
+		rows = int(shape.rows)
+		k = int(shape.k)
+		span = shape.open
+		voids = shape.void
+		starts.assign(shape.starts)
 	var fallback := {}
 	for attempt in range(1, ATTEMPTS + 1):
-		var g := blank(cols, rows, bd.k)
-		var sx := rng.randi_range(1, cols - 2)
-		var sy := rng.randi_range(1, rows - 2)
+		var g := blank(cols, rows, k, voids)
+		var sx := 0
+		var sy := 0
+		if starts.is_empty():
+			sx = rng.randi_range(1, cols - 2)
+			sy = rng.randi_range(1, rows - 2)
+		else:
+			var s0: int = starts[rng.randi_range(0, starts.size() - 1)]
+			sx = s0 % cols
+			sy = s0 / cols
 		g.start = sy * cols + sx
 		var free: Array[int] = []
 		for c in int(g.n):
-			if absi(c % cols - sx) > 1 or absi(c / cols - sy) > 1:
+			if (absi(c % cols - sx) > 1 or absi(c / cols - sy) > 1) and g.void[c] == 0:
 				free.append(c)
 		for i in range(free.size() - 1, 0, -1):
 			var j := rng.randi_range(0, i)
@@ -295,13 +337,12 @@ static func generate(rng: RandomNumberGenerator, d: int) -> Dictionary:
 			free[i] = free[j]
 			free[j] = t
 		var hog: PackedByteArray = g.hog
-		for i in int(bd.k):
+		for i in k:
 			hog[free[i]] = 1
 		count(g)
 		var probe := PackedByteArray()
 		probe.resize(g.n)
 		var opened := flood(g, probe, g.start).size()
-		var span: Vector2i = bd.open
 		if opened < span.x or opened > span.y:
 			continue
 		var p := prove(g, bd.subsets)
@@ -316,7 +357,126 @@ static func generate(rng: RandomNumberGenerator, d: int) -> Dictionary:
 			continue
 		g.graded = true
 		return g
+	if not shape.is_empty():
+		# A themed lawn is dealt graded or not at all: the rectangle is the
+		# fallback, never a shape that skipped the band's own promise.
+		return {}
 	if not fallback.is_empty():
 		fallback.graded = false
 		fallback.attempts = ATTEMPTS
 	return fallback
+
+# --- the day's shape (daily theme, wave 2, 2026-11-06) ---
+
+## The night's picture sides each band tries, in order: each is a different
+## thing of the theme, so the bands mostly lay different lawns.
+const THEMED_SIZES := [[10, 12, 24, 32], [12, 24, 32, 10], [24, 32, 12, 10], [32, 24, 12, 10]]
+## A cut is kept when its lawn is at least SHAPE_MIN of the band's own
+## rectangle (a smaller lawn is a shorter day) and at most SHAPE_MAX of its
+## box (or it is a rectangle with a corner off). Boxes grow up to SHAPE_GROW
+## a side past the band's: taller boxes shrink every pile on a phone.
+const SHAPE_MIN := 0.7
+const SHAPE_MAX := 0.9
+const SHAPE_GROW := 1
+
+## `pic_rows` (a night picture's rows) cut for band `d`: {cols, rows, void,
+## beads (cell -> bead name), cells, k, open, starts}, or {} when no box
+## takes it. The cut is smoothed (a one-cell spur trimmed, a one-cell nook
+## filled) and kept as its largest piece; hedgehogs and the opening's range
+## keep the band's density.
+static func shape_fit(pic_rows: Array, d: int) -> Dictionary:
+	var bd := band(d)
+	var n0 := int(bd.cols) * int(bd.rows)
+	for grow in SHAPE_GROW + 1:
+		var box := Vector2i(int(bd.cols) + grow, int(bd.rows) + grow)
+		var cut := Planes.cut_shape(pic_rows, box, false)
+		if cut.is_empty():
+			continue
+		var off := Vector2i((box.x - int(cut.cols)) / 2, (box.y - int(cut.rows)) / 2)
+		var on := {}
+		for c: Vector2i in cut.cells:
+			on[c + off] = cut.cells[c]
+		on = _smooth(on, box)
+		# Laid in the smoothed cut's own extent: no row or column of grass
+		# a phone pays height for.
+		var lo := Vector2i(1 << 20, 1 << 20)
+		var hi := Vector2i(-1, -1)
+		for c: Vector2i in on:
+			lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
+			hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
+		if hi.x < 0:
+			continue
+		box = hi - lo + Vector2i.ONE
+		var moved := {}
+		for c: Vector2i in on:
+			moved[c - lo] = on[c]
+		on = moved
+		var count := on.size()
+		if float(count) < SHAPE_MIN * float(n0) or float(count) > SHAPE_MAX * float(box.x * box.y):
+			continue
+		var voids := PackedByteArray()
+		voids.resize(box.x * box.y)
+		voids.fill(1)
+		for c: Vector2i in on:
+			voids[c.y * box.x + c.x] = 0
+		var starts: Array[int] = []
+		for y in range(1, box.y - 1):
+			for x in range(1, box.x - 1):
+				var whole := true
+				for dy in range(-1, 2):
+					for dx in range(-1, 2):
+						if voids[(y + dy) * box.x + x + dx] == 1:
+							whole = false
+				if whole:
+					starts.append(y * box.x + x)
+		if starts.size() < 4:
+			continue
+		var share := float(count) / float(n0)
+		var span: Vector2i = bd.open
+		return {"cols": box.x, "rows": box.y, "void": voids, "beads": on, "cells": count,
+			"k": int(round(float(bd.k) * share)),
+			"open": Vector2i(int(round(span.x * share)), int(round(span.y * share))),
+			"starts": starts}
+	return {}
+
+## A cut without its one-cell spurs and nooks, as its largest piece.
+static func _smooth(on: Dictionary, box: Vector2i) -> Dictionary:
+	var dirs := [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]
+	for pass_i in 3:
+		var changed := false
+		for y in box.y:
+			for x in box.x:
+				var c := Vector2i(x, y)
+				var sides := 0
+				var bead := ""
+				for dv: Vector2i in dirs:
+					if on.has(c + dv):
+						sides += 1
+						bead = String(on[c + dv])
+				if on.has(c) and sides <= 1:
+					on.erase(c)
+					changed = true
+				elif not on.has(c) and sides >= 3:
+					on[c] = bead
+					changed = true
+		if not changed:
+			break
+	var best := {}
+	var seen := {}
+	for c: Vector2i in on:
+		if seen.has(c):
+			continue
+		var piece := {c: on[c]}
+		seen[c] = true
+		var stack: Array = [c]
+		while not stack.is_empty():
+			var p: Vector2i = stack.pop_back()
+			for dv: Vector2i in dirs:
+				var q: Vector2i = p + dv
+				if on.has(q) and not seen.has(q):
+					seen[q] = true
+					piece[q] = on[q]
+					stack.append(q)
+		if piece.size() > best.size():
+			best = piece
+	return best

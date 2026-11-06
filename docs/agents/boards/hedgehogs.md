@@ -181,3 +181,57 @@ Decided for the user, unconfirmed: the warm-up thresholds, the second
 press free, stars by wakes (hints free), SPENT_ALPHA 0.32, the toast over
 the tray's top. Sleepwalkers kept as designed. Owed: a phone, the pt/es
 wording by a reader, no new sounds.
+
+### The day's thing (2026-11-06)
+
+Wave 2 of the daily theme roadmap (`docs/superpowers/specs/2026-10-13-daily-theme-design.md`,
+memory `daily-theme-roadmap`), built unattended on the user's "integrate the
+daily theme into all games, get the next on the list". Free: the phone reads
+the night's `pictures` doc, no server change. Reference: the dig-and-flag
+apps that lay shaped boards and end on a pixel picture (Pixel Mines, Pixel
+Sweepers): clear it and the picture shows in colour.
+
+- **The lawn is cut to one of the night's things** on every band
+  (`Gen.THEMED_SIZES`: Easy tries the 10 first, Medium the 12, Hard the 24,
+  Insane the 32, so the bands mostly lay different things). `Gen.shape_fit`
+  cuts it with `PlanesState.cut_shape(rows, box, false)` to the band's box
+  (then one bigger a side, `SHAPE_GROW`), trims one-cell spurs, fills
+  one-cell nooks, keeps the largest piece and lays it in its own extent.
+  Kept when the lawn is at least `SHAPE_MIN` (0.7) of the band's rectangle
+  and at most `SHAPE_MAX` (0.9) of its box, with four or more cells whose
+  whole 3x3 is lawn (the opening's). Hedgehogs and the opening's range keep
+  the band's density.
+- **Outside the shape is void** (`g.void`): no neighbour list, in nobody's
+  list, never covered, raked, counted, a hedgehog or a walk's step; the
+  proof, the count rule, `_warm`, `is_solved`, `to_clear` and the hint mask
+  it. `open` stays 0 there, so `restart` and `reset_board` need nothing.
+  Taps on it are ignored (`_cell_at` -1, `rake`/`toggle_flag` none); the
+  share line prints it as a white square, so a share shows the day's shape.
+- **Dealt graded or not at all**: `Gen.generate(rng, d, shape)` returns {} if
+  400 attempts never pass the band's proof, subsets and warm-up, and the
+  board deals the rectangle off the untouched `rng`, so a day without a
+  theme (or whose things all fail) deals exactly as before. Each thing is
+  tried on its own rng (`rng.seed ^ hash(id)`).
+- **Measured** (`tests/_probe_hh_theme.gd`, the five cached nights 20261103-07
+  and the bank's 60 things): 23 of 24 cached band-days took a thing, 10-13 of
+  15 bank days a band; lawns 57-99 cells (8x10 to 11x12); a reader of
+  singles stalls no worse than on the rectangle (Insane better); slowest
+  deal 196 ms on Insane (25 ms Hard). Sleepwalkers on shaped lawns
+  (`tests/_probe_hh_walk.gd -- theme`): 26 of 30 themed, 0 bad, worst
+  rake+walk 3.2 ms.
+- **In play** the void is grass inside the bed (`VOID_GRASS`, a tuft on some),
+  drawn in the lawn mesh; no name is shown, the shape is the guess.
+- **The reveal**: on the solve each cell takes its bead
+  (`Pal.PG_BEADS`, pale beads shaded) `PAINT_AT` after the sleepers' wave
+  reaches it, swelling in over `PAINT_TIME`; the numbers fade under it
+  (`_draw_paint`, one mesh, rebuilt while it pours, then kept). The `theme`
+  cue rings as it starts (felt as a good), the win card's subtitle is
+  `HH_WIN_THEME` ("Today's lawn: %s."), a reopened solved day shows it at
+  once, `day_dict` says `"source": "theme"`, the thing's id and the void.
+  A name toast was tried and dropped: it lay under the win card.
+- **Sounds** (the house sound): `rake`, `chord`, `snuffle` and `acorn` were
+  still the 2026-10-10 felt tock; each is the bank's `token` now, notes kept.
+- Checked on today's cached night (dress), `opengl3_angle`, 810x1440: 93
+  draw calls at rest, 200 peak on the solve (213 before), 129 restored;
+  `_win.gd -- hedgehogs` PASS. Owed: a phone, the user's ear on the new
+  tokens and the cue, pt/es read by a native.

@@ -1312,7 +1312,11 @@ SETS = {
         # note, so that every note lands between 400 and 700 Hz, and no two
         # phrases share a contour. What travels is air: a wide rake is a gust
         # and a lawn's worth a longer one.
-        "rake":     ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.16", "body:320", "tight"),
+        # 2026-11-06 (the house sound, docs/agents/sound.md): the rake, the
+        # chord, the snuffle and the acorn were the old felt tock; each is the
+        # bank's token now, with its own notes kept. The rake sits two steps
+        # under the flag, so the two hands still part by ear.
+        "rake":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.14", "notes:0:-5", "tight"),
         "gust":     ("a tiny quick puff of warm air, one light short breath that rises and fades, very short", 0.6, -16, BREEZE, "warm:900", "steep", "ease:0.04", "body:320"),
         "flag":     ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.12", "notes:0:-3", "tight"),
         # The twig pulled out: flag's take, two steps down.
@@ -1321,7 +1325,7 @@ SETS = {
         # "hmph" (heart_lost falls a quarter second behind it).
         "woke":     ("one soft short note on a kalimba, muffled and kind", 0.6, -12, COZY_TUNE, "warm:2200", "ease:0.01", "body:300", "notes:0.14:4,4", "cut:0.6"),
         # A number tapped to rake round it: rake's take, two notches.
-        "chord":    ("one small wooden peg set down gently on thick felt, a single soft tock, round and hollow, very short", 0.5, -14, HUSH, "warm:1600", "cut:0.24", "body:320", "tight", "notes:0.08:0,2"),
+        "chord":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -15, FOLEY, "bank:token", "cut:0.24", "notes:0.08:-5,-3", "tight"),
         "refuse":   ("a tiny soft kalimba note with a gentle little wobble and a muffled leaf rustle, a kind 'not that one', very short", 0.5, -14, HARVEST),
         "check":    ("a soft gentle two-note kalimba falling, a kind 'not yet', warm and patient", 0.6, -12, HARVEST),
         "check_ok": ("three soft warm kalimba notes rising, bright and happy, 'all good'", 0.7, -10, HARVEST),
@@ -1334,7 +1338,7 @@ SETS = {
         # was a silver bell). snuffle: the walker's steps, flag's take, three
         # slow notches.
         "bell":     ("one soft short note on a kalimba, muffled and kind", 0.6, -14, COZY_TUNE, "warm:2200", "ease:0.012", "body:300", "notes:0:7", "cut:0.6"),
-        "snuffle":  ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -17, HUSH, "warm:1200", "cut:0.4", "body:320", "tight", "notes:0.12:-2,0,-2"),
+        "snuffle":  ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -18, FOLEY, "bank:token", "cut:0.4", "notes:0.12:-7,-5,-7", "tight"),
         "heart_lost":    ("a soft gentle kalimba two-note fall, a small sad 'oh', a delicate note dropping, warm and muffled, never a buzzer", 0.6, -15, HARVEST),
         "out_of_hearts": ("one slow soft note on a kalimba, sleepy, calm and kind, left to fade", 1.6, -13, COZY_TUNE, "warm:2600", "ease:0.02", "body:300", "notes:0.32:12,9,5"),
         "heart_back":    ("a warm rising pair of soft kalimba plucks, a little heart coming back, gentle and happy", 0.6, -15, HARVEST),
@@ -1346,7 +1350,11 @@ SETS = {
         "confetti": ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -17, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320"),
         "love":     ("a tiny soft sweet bubbly pop with a little two-note music box 'aww', cute and warm, short", 0.7, -11, HARVEST),
         "flutter":  ("one soft short note on a kalimba, muffled and kind", 0.6, -15, COZY_TUNE, "warm:2400", "ease:0.01", "body:300", "notes:0.09:7,9", "cut:0.4"),
-        "acorn":    ("one small light wooden button set down gently on thick felt, a single soft light tock, round and hollow, very short", 0.5, -15, HUSH, "warm:1400", "cut:0.42", "body:320", "tight", "notes:0.13:4,0,-1"),
+        "acorn":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -16, FOLEY, "bank:token", "cut:0.42", "notes:0.13:2,-2,-3", "tight"),
+        # 2026-11-06: a themed day's lawn takes its picture's colours on the
+        # solve (the daily theme, wave 2): Nonogram's, Shelves' and Clues'
+        # theme cue, the bank's wraps climbing an octave as the colour pours.
+        "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
         "whoosh":   ("a long soft gust of warm breeze through leaves, one gentle whoosh of air that rises slowly and fades", 1.0, -15, BREEZE, "warm:1100", "steep", "ease:0.1", "body:320"),
         # The party.
         "stamp":    ("one soft note on a kalimba, proud and warm, left to fade", 1.5, -9, COZY_TUNE, "warm:2600", "ease:0.012", "body:300", "notes:0.26:9,6,13"),

@@ -2,6 +2,8 @@ extends SceneTree
 
 ## Plays Sleepwalkers days out by logic alone (hint_step from what the
 ## player sees), timing each walk: every day must finish with no guess.
+## `-- theme` lays each day in Pixel Garden bank things' shapes (four a day,
+## as the night's sizes would come), the daily theme's cut lawns.
 const State = preload("res://puzzles/hedgehogs_state.gd")
 
 func _initialize() -> void:
@@ -10,12 +12,25 @@ func _initialize() -> void:
 	var worst := 0.0
 	var total_walks := 0
 	var none := 0
+	var themed := OS.get_cmdline_user_args().has("theme")
+	var singles: Array = []
+	if themed:
+		var doc = JSON.parse_string(FileAccess.get_file_as_string("res://content/pixel_garden.json"))
+		singles = doc.bands[0] + doc.bands[1]
+	var cut := 0
 	for d in days:
 		var rng := RandomNumberGenerator.new()
 		rng.seed = 1000 + d
 		var st = State.new()
 		var t0 := Time.get_ticks_usec()
-		st.setup(rng, 3)
+		var pics: Array = []
+		if themed:
+			for i in 4:
+				var p: Dictionary = singles[(d * 4 + i) % singles.size()]
+				pics.append({"id": p.id, "name": p.id, "rows": p.rows})
+		st.setup(rng, 3, pics)
+		if st.themed():
+			cut += 1
 		var gen_ms := (Time.get_ticks_usec() - t0) / 1000.0
 		var guard := 0
 		while not st.is_solved() and guard < 400:
@@ -43,5 +58,5 @@ func _initialize() -> void:
 				break
 		total_walks += st.walks
 		print("day %d gen %.0f ms walks %d solved %s" % [d, gen_ms, st.walks, st.is_solved()])
-	print("bad ", bad, " worst rake+walk ms ", worst, " mean walks ", float(total_walks) / days)
+	print("themed ", cut, "/", days, " bad ", bad, " worst rake+walk ms ", worst, " mean walks ", float(total_walks) / days)
 	quit()

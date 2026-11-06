@@ -71,9 +71,30 @@ static func hearts_for(d: int) -> int: return HEARTS_BY[clampi(d, 0, 3)]
 ## {"raked": PackedInt32Array, "flags": [[cell, was]]}.
 var history: Array = []
 
-func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
+## The day's theme (wave 2 of the daily theme roadmap, 2026-11-06): {id,
+## name, beads (Vector2i -> bead name)} when the lawn is cut to one of the
+## night's things, {} on a rectangle. The beads are shown only once solved.
+var theme: Dictionary = {}
+
+## `pictures` are the night's things this band may take, in
+## Gen.THEMED_SIZES' order ({id, name, rows}); [] deals the rectangle, the
+## same draws off `rng` as before the theme.
+func setup(rng: RandomNumberGenerator, difficulty: int, pictures: Array = []) -> void:
 	self.difficulty = difficulty
-	g = Gen.generate(rng, difficulty)
+	theme = {}
+	g = {}
+	for pic: Dictionary in pictures:
+		var shape := Gen.shape_fit(pic.rows, difficulty)
+		if shape.is_empty():
+			continue
+		var tried := RandomNumberGenerator.new()
+		tried.seed = rng.seed ^ hash(String(pic.id))
+		g = Gen.generate(tried, difficulty, shape)
+		if not g.is_empty():
+			theme = {"id": String(pic.id), "name": String(pic.get("name", "")), "beads": shape.beads}
+			break
+	if g.is_empty():
+		g = Gen.generate(rng, difficulty)
 	dealt_hog = g.hog.duplicate()
 	walk_seed = rng.randi()
 	var n: int = g.n
@@ -84,7 +105,7 @@ func setup(rng: RandomNumberGenerator, difficulty: int) -> void:
 	restart()
 	to_clear = 0
 	for c in n:
-		if g.hog[c] == 0 and open[c] == 0:
+		if g.hog[c] == 0 and open[c] == 0 and not is_void(c):
 			to_clear += 1
 
 ## The moves a level hands out: a move for every bare pile the opening left
@@ -207,6 +228,9 @@ func cols() -> int: return int(g.get("cols", 0))
 func rows() -> int: return int(g.get("rows", 0))
 func size() -> int: return int(g.get("n", 0))
 func is_hog(c: int) -> bool: return g.hog[c] == 1
+## Outside the day's shape: no pile, no number, never touched.
+func is_void(c: int) -> bool: return Gen.is_void(g, c)
+func themed() -> bool: return not theme.is_empty()
 func number(c: int) -> int: return int(g.num[c])
 
 ## Every bare cell raked.
@@ -215,7 +239,7 @@ func is_solved() -> bool:
 		return false
 	var hog: PackedByteArray = g.hog
 	for c in size():
-		if hog[c] == 0 and open[c] == 0:
+		if hog[c] == 0 and open[c] == 0 and not is_void(c):
 			return false
 	return true
 
@@ -254,7 +278,7 @@ func _rake_from(c: int, ring0: int, out_cells: PackedInt32Array, out_rings: Pack
 func rake(c: int) -> Dictionary:
 	var res := {"kind": "none", "cells": PackedInt32Array(), "rings": PackedInt32Array(), "from": c,
 		"cost": 0}
-	if is_solved():
+	if is_solved() or is_void(c):
 		return res
 	if open[c] == 1:
 		return chord(c)
@@ -345,7 +369,7 @@ func chord(c: int) -> Dictionary:
 ## Lays or lifts a flag on a covered cell. {"kind"}: "laid", "lifted",
 ## "refused_pin" or "none".
 func toggle_flag(c: int) -> Dictionary:
-	if is_solved() or open[c] == 1 or woke[c] == 1:
+	if is_solved() or open[c] == 1 or woke[c] == 1 or is_void(c):
 		return {"kind": "none"}
 	if pin[c] == 1:
 		return {"kind": "refused_pin"}
@@ -501,7 +525,7 @@ func _explain(known: PackedByteArray) -> Dictionary:
 	for c in size():
 		if known[c] == 1:
 			left -= 1
-		elif open[c] == 0:
+		elif open[c] == 0 and not is_void(c):
 			unk.append(c)
 	if not unk.is_empty() and left == 0:
 		return _step("rake", unk, PackedInt32Array(), "count", 0)
@@ -551,6 +575,6 @@ func share_glyphs() -> String:
 		var s := ""
 		for x in cols():
 			var c := y * cols() + x
-			s += "🦔" if woke[c] == 1 else ("🟩" if open[c] == 1 else "🍂")
+			s += "⬜" if is_void(c) else ("🦔" if woke[c] == 1 else ("🟩" if open[c] == 1 else "🍂"))
 		lines.append(s)
 	return "\n".join(lines)

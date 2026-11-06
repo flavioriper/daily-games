@@ -64,6 +64,24 @@ const RunMesh = preload("res://ui/flat/run_mesh.gd")
 const World = preload("res://puzzles/hedgehogs_world.gd")
 const StarLine = preload("res://ui/flat/star_line.gd")
 const FLAT_HOST := "res://ui/flat/flat_host.gd"
+const ThemedPictures = preload("res://core/themed_pictures.gd")
+## The day's theme (wave 2, 2026-11-06): a themed lawn is cut to one of the
+## night's things, the cells outside it grass inside the bed (VOID_GRASS,
+## a tuft on one in VOID_TUFT). On the solve the lawn takes the thing's own
+## beads (core/palette.gd PG_BEADS), each cell PAINT_AT after the sleepers'
+## wave reaches it, over PAINT_TIME, as a bead PAINT_SIDE of the cell; the
+## numbers fade to PAINT_NUM under it. A bead paler than PAINT_PALE is
+## shaded PAINT_PALE_SHADE, or white would vanish on the soil.
+const VOID_GRASS := Color("a9bf7a")
+const VOID_TUFT := 0.3
+const PAINT_AT := 0.35
+const PAINT_TIME := 0.4
+const PAINT_SIDE := 0.9
+const PAINT_RADIUS := 0.2
+const PAINT_ALPHA := 0.92
+const PAINT_NUM := 0.0
+const PAINT_PALE := 0.82
+const PAINT_PALE_SHADE := 0.12
 
 ## The looks a cell is put together from, each made once at the reference
 ## cell about the cell's centre: a look's id is its kind times LOOK_SPAN plus
@@ -279,6 +297,10 @@ const STAMP_R := 0.16
 const STAMP_TILT := -0.22
 
 var _state = State.new()
+## The solved themed lawn's beads: rebuilt every frame while they pour on,
+## then kept (`_paint_done`) until the next deal or layout.
+var _paint: ArrayMesh
+var _paint_done := false
 ## The back garden edge to edge (the registry's `bleed`): made on the first
 ## set_clear, so a lawn never told one (the tutorial's, a card's) is laid in
 ## its card as before.
@@ -665,6 +687,7 @@ const HAPTICS := {
 	"heart_lost": Haptics.BAD,
 	"out_of_hearts": Haptics.LOSE,
 	"solved": Haptics.WIN,
+	"theme": Haptics.GOOD,
 }
 
 func _ready() -> void:
@@ -727,13 +750,18 @@ func day_dict() -> Dictionary:
 		puzzle.append(cell.duplicate() if open[c] == 1 else {})
 		answer.append(cell)
 	var proof: Dictionary = g.get("proof", {})
+	var voids: Array = []
+	for c in int(g.n):
+		if _state.is_void(c):
+			voids.append(c)
 	var doc := {
-		"source": "generator", "kind": "grid",
+		"source": "theme" if _state.themed() else "generator", "kind": "grid",
+		"theme": String(_state.theme.get("id", "")),
 		"payload": {"cols": w, "rows": h, "hedgehogs": hogs.size(), "start": int(g.start),
-			"raked": raked},
+			"raked": raked, "void": voids},
 		"solution": {"hedgehogs": hogs, "numbers": Array(g.num)},
 		"metrics": {"cols": w, "rows": h, "cells": int(g.n), "hedgehogs": hogs.size(),
-			"opened": raked.size(), "to_clear": int(g.n) - hogs.size() - raked.size(),
+			"opened": raked.size(), "to_clear": int(g.n) - voids.size() - hogs.size() - raked.size(),
 			"attempts": int(g.get("attempts", 0)), "graded": bool(g.get("graded", false)),
 			"rounds": int(proof.get("rounds", 0)), "subsets": int(proof.get("sub", 0)),
 			"counts": int(proof.get("cnt", 0)), "sleepwalkers": _state.walkers(),
@@ -746,7 +774,7 @@ func day_dict() -> Dictionary:
 	return doc
 
 func build(rng: RandomNumberGenerator, difficulty: int) -> void:
-	_state.setup(rng, difficulty)
+	_state.setup(rng, difficulty, _night_pictures(difficulty))
 	# A new lawn takes its reference layout afresh (its cell may be smaller
 	# than the last deal's).
 	_ref_cell = 0.0
@@ -754,6 +782,18 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	# through _dealt() and have none.
 	max_moves = _state.moves_budget()
 	_dealt()
+
+## The night's things this band may cut its lawn to (State.Gen.THEMED_SIZES),
+## on a daily dealt first; [] on any other deal, which lays the rectangle.
+func _night_pictures(difficulty: int) -> Array:
+	var out: Array = []
+	if bank_step != 0 or daily_key == 0:
+		return out
+	for side in State.Gen.THEMED_SIZES[clampi(difficulty, 0, State.Gen.THEMED_SIZES.size() - 1)]:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			out.append(pic)
+	return out
 
 ## Everything a new lawn starts from, once the state holds it: build()'s,
 ## and the tutorial's hand-made lawns'.
@@ -797,6 +837,8 @@ func _dealt() -> void:
 	_spent_at.resize(n)
 	_spent_at.fill(-100.0)
 	_light_key = []
+	_paint = null
+	_paint_done = false
 	_last = int(_state.g.start)
 	_opened = _now()
 	# The opening's gust plays once the card has popped in.
@@ -920,6 +962,8 @@ func _layout() -> void:
 		_cat.pivot_offset = _cat.size * Vector2(0.5, 0.85)
 		_cat.position = _cat_spot() - _cat.size * 0.5
 	_lawn = null
+	_paint = null
+	_paint_done = false
 	_love_mesh = null
 	_seal_mesh = null
 	_refresh()
@@ -1037,6 +1081,8 @@ func _cell_at(local: Vector2) -> int:
 	var x := int(floor(v.x))
 	var y := int(floor(v.y))
 	if x < 0 or y < 0 or x >= _state.cols() or y >= _state.rows():
+		return -1
+	if _state.is_void(y * _state.cols() + x):
 		return -1
 	return y * _state.cols() + x
 
@@ -1396,7 +1442,7 @@ func _breeze(t: float) -> void:
 	var from_left := randf() < 0.5
 	for x in cols:
 		var c := row * cols + x
-		if _shows_raked(c, t):
+		if _shows_raked(c, t) or _state.is_void(c):
 			continue
 		var when := t + float(x if from_left else cols - 1 - x) * BREEZE_STEP
 		_rustle_at[c] = when
@@ -1450,10 +1496,14 @@ func _draw() -> void:
 		_live = _build_live(t)
 	var shown: Array = [_lawn]
 	var at := xf * _relay()
-	for m in _bands + [_live]:
+	for m in _bands:
 		if m != null:
 			draw_mesh(m, null, at, tint)
 			shown.append(m)
+	_draw_paint(t, xf, seen, shown)
+	if _live != null:
+		draw_mesh(_live, null, at, tint)
+		shown.append(_live)
 	_draw_light(xf, seen, shown)
 	_draw_numbers(t, xf, seen)
 	_draw_tally(t, seen, shown)
@@ -1522,7 +1572,19 @@ func _build_lawn() -> ArrayMesh:
 		b.stroke(PackedVector2Array([_grid + Vector2(-mid + off, field.y * 0.3), _grid + Vector2(-mid + off, field.y * 0.7)]), 1.5, grain)
 		b.stroke(PackedVector2Array([_grid + Vector2(field.x + mid + off, field.y * 0.12), _grid + Vector2(field.x + mid + off, field.y * 0.46)]), 1.5, grain)
 	b.fan(Face.Builder.round_rect(_grid - Vector2.ONE * 2.0, field + Vector2.ONE * 4.0, FRAME_R - 8.0), Pal.PLAQUE)
-	b.fan(Face.Builder.round_rect(_grid, field, FRAME_R - 10.0), SOIL)
+	var soil := Face.Builder.round_rect(_grid, field, FRAME_R - 10.0)
+	b.fan(soil, SOIL)
+	# A themed lawn: the cells outside the day's thing are grass in the bed,
+	# so the soil and its piles stand in the thing's shape.
+	for c in _state.size():
+		if not _state.is_void(c):
+			continue
+		var at := _grid + Vector2(c % _state.cols(), c / _state.cols()) * _cell
+		Rings._clip_polygon(b, PackedVector2Array([at - Vector2.ONE, at + Vector2(_cell + 1.0, -1.0),
+			at + Vector2.ONE * (_cell + 1.0), at + Vector2(-1.0, _cell + 1.0)]), VOID_GRASS, soil)
+	for c in _state.size():
+		if _state.is_void(c) and Lawn.h01(seed_i, c + 900) < VOID_TUFT:
+			Scenery.tuft(b, _centre(c) + Vector2(0.0, _cell * 0.2), _cell * 0.32)
 	for c in 4:
 		var corner := _grid + Vector2(float(c % 2), float(c / 2)) * field + Vector2(-1.0 if c % 2 == 0 else 1.0, -1.0 if c < 2 else 1.0) * mid
 		b.disc(corner, 4.0, Pal.PLAQUE_DEEP)
@@ -1572,11 +1634,12 @@ func _build_band(k: int, first: int, last: int, t: float) -> ArrayMesh:
 	var rm: RunMesh = _band_rms[k]
 	if not rm.laid():
 		for c in range(first, last):
-			rm.room(0, c, _looks.size_of(_id(Look.GROUND, c)) + _looks.size_of(_id(Look.PILE, c)) + ROOM_SLACK)
+			if not _state.is_void(c):
+				rm.room(0, c, _looks.size_of(_id(Look.GROUND, c)) + _looks.size_of(_id(Look.PILE, c)) + ROOM_SLACK)
 	rm.begin()
 	var marked: Array = []
 	for c in range(first, last):
-		if not _moving.has(c):
+		if not _moving.has(c) and not _state.is_void(c):
 			rm.open(0, c)
 			if _put_rest(rm, c, t):
 				marked.append(c)
@@ -1914,7 +1977,7 @@ func _draw_numbers(t: float, xf: Transform2D, seen: float) -> void:
 		if since < 0.0 and not Motion.reduce:
 			continue
 		var sc: Vector2 = Motion.pop_in_scale(since) if not Motion.reduce else Vector2.ONE
-		var ink: float = seen * _spent_level(c, t)
+		var ink: float = seen * _spent_level(c, t) * lerpf(1.0, PAINT_NUM, _paint_level(c, t))
 		var at := _centre(c) + Vector2(Motion.shiver_offset(t - float(_bump_at[c]), _cell * 0.03), _cell * 0.02)
 		draw_set_transform_matrix(xf * Transform2D(0.0, sc, 0.0, at))
 		var text := str(v)
@@ -1983,6 +2046,53 @@ func _draw_light(xf: Transform2D, seen: float, shown: Array) -> void:
 		return
 	draw_mesh(_light, null, xf, Color(1.0, 1.0, 1.0, seen))
 	shown.append(_light)
+
+## How far the day's colours have poured onto cell `c` (0 to 1): nothing
+## before the solve or on a rectangle; on the solve each cell PAINT_AT after
+## the sleepers' wave out of the last rake reaches it.
+func _paint_level(c: int, t: float) -> float:
+	if _solved_at < 0.0 or not _state.themed() or _state.is_void(c):
+		return 0.0
+	if Motion.reduce:
+		return 1.0
+	var cols: int = _state.cols()
+	var d := maxi(absi(c % cols - _last % cols), absi(c / cols - _last / cols))
+	var u := (t - _solved_at - WIN_LEAD - PAINT_AT - Motion.stagger(d, Motion.WAVE_STEP * 2.0)) / PAINT_TIME
+	return clampf(u, 0.0, 1.0)
+
+## The solved themed lawn as its picture: a bead a cell in the thing's own
+## colour, swelling in as it pours. One mesh, kept once every bead is down.
+func _draw_paint(t: float, xf: Transform2D, seen: float, shown: Array) -> void:
+	if _solved_at < 0.0 or not _state.themed():
+		return
+	if _paint == null or not _paint_done:
+		var beads: Dictionary = _state.theme.get("beads", {})
+		var b := Face.Builder.new()
+		var all := true
+		for c in _state.size():
+			var k := _paint_level(c, t)
+			if k < 1.0:
+				all = false
+			if k <= 0.0:
+				continue
+			var bead = Pal.PG_BEADS.get(String(beads.get(Vector2i(c % _state.cols(), c / _state.cols()), "")))
+			if bead == null:
+				continue
+			var face: Color = bead
+			if face.get_luminance() > PAINT_PALE:
+				face = face.darkened(PAINT_PALE_SHADE)
+			var e := Motion.back_out(k) if not Motion.reduce else 1.0
+			var side := Vector2.ONE * _cell * PAINT_SIDE * lerpf(0.4, 1.0, e)
+			var at := _centre(c) - side * 0.5
+			b.fan(Face.Builder.round_rect(at + Vector2(0.0, _cell * 0.04), side, _cell * PAINT_RADIUS), Color(face.darkened(0.3), PAINT_ALPHA * k))
+			b.fan(Face.Builder.round_rect(at, side, _cell * PAINT_RADIUS), Color(face, PAINT_ALPHA * k))
+			b.fan(Face.Builder.round_rect(at + side * Vector2(0.18, 0.12), side * Vector2(0.34, 0.16), _cell * 0.05), Color(face.lightened(0.4), 0.7 * k))
+		_paint = b.mesh() if not b.verts.is_empty() else null
+		_paint_done = all
+	if _paint == null:
+		return
+	draw_mesh(_paint, null, xf, Color(1.0, 1.0, 1.0, seen))
+	shown.append(_paint)
 
 ## The tally strip: a sleeping hedgehog and how many are still asleep and
 ## unflagged -- the global count the proof uses, given free. BAD when there
@@ -2488,6 +2598,9 @@ func flat_win() -> Dictionary:
 		faces.append(HedgehogFace.new())
 	var sub := tr("HH_WIN_NONE") if _state.woken == 0 else (tr("HH_WIN_WOKE_ONE") if _state.woken == 1
 		else tr("HH_WIN_WOKE_N") % _state.woken)
+	var name := String(_state.theme.get("name", ""))
+	if name != "":
+		sub = tr("HH_WIN_THEME") % name
 	return {"faces": faces, "subtitle": sub}
 
 ## The wave's length: the farthest sleeper from the last rake.
@@ -2548,6 +2661,11 @@ func _on_solved() -> void:
 		fx.cue("solved")
 	_say(tr("HH_WIN_NONE") if _state.woken == 0 else tr("HH_WIN_WOKE_ONE") if _state.woken == 1
 		else tr("HH_WIN_WOKE_N") % _state.woken, Face.Expr.JOY)
+	if _state.themed():
+		# The colour pours on behind the sleepers' wave, the theme cue as it
+		# starts; the win card names it (a toast would lie under the card).
+		_later(0.0 if Motion.reduce else WIN_LEAD + PAINT_AT, func(): fx.cue("theme"))
+		_busy_for(WIN_LEAD + PAINT_AT + _wave_span() + PAINT_TIME)
 	_party(0.0 if Motion.reduce else WIN_LEAD + _wave_span() + PARTY_AT)
 	_refresh()
 
@@ -2605,7 +2723,7 @@ func restore_completed_board() -> void:
 	_sync_numbers()
 	_paws = Vector2i(-1, -1)
 	for c in _state.size():
-		if not _state.is_hog(c):
+		if not _state.is_hog(c) and not _state.is_void(c):
 			_state.open[c] = 1
 	_state.woke.fill(0)
 	_state.woken = 0

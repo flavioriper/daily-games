@@ -936,6 +936,7 @@ HH_TALLY_OVER_ONE,1 flag too many,1 bandeira a mais,1 bandera de más
 HH_TALLY_OVER_N,%d flags too many,%d bandeiras a mais,%d banderas de más
 HH_TALLY_DONE,Every hedgehog is awake,Todos os ouriços acordaram,Todos los erizos despertaron
 HH_WIN_NONE,Not one hedgehog woke.,Nenhum ouriço acordou.,Ningún erizo se despertó.
+HH_WIN_THEME,Today's lawn: %s.,Gramado de hoje: %s.,El césped de hoy: %s.
 HH_WIN_WOKE_ONE,One hedgehog woke up grumpy.,Um ouriço acordou emburrado.,Un erizo se despertó gruñón.
 HH_WIN_WOKE_N,%d hedgehogs woke up grumpy.,%d ouriços acordaram emburrados.,%d erizos se despertaron gruñones.
 HH_SHARE_NONE,Not one hedgehog woke.,Nenhum ouriço acordou.,Ningún erizo se despertó.
