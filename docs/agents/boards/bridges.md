@@ -327,5 +327,11 @@ the same as Hedgehogs': boards that end on a pixel picture in colour.
   `day_dict`: `"source": "theme"`, the thing's id, `payload.lagoon`.
 - `opengl3_angle`, 810x1440, `_shot_bridges.gd -- theme` (new mode, with
   `theme_restore`): 164 draw calls peak on the solve, 95 restored;
-  `test_bridges` 6773/0; `_win.gd -- bridges` PASS. Owed: a phone, the
-  user's ear on the cue, pt/es read by a native.
+  `test_bridges` 6773/0; `_win.gd -- bridges` PASS.
+- Left as they are, decided for the user: the next band's teaser
+  (`BR_LVL_*`, "16 islets, 9 x 9") promises the square sea's count, and a
+  themed day may deal fewer; the share line is text with no grid, so it
+  carries no trace of the thing (Hedgehogs' shows its shape).
+- Owed: a phone (Hard's pour rebuilds up to ~340 beads a frame for ~1.5 s,
+  the place to look for a hitch), the user's ear on the cue, pt/es read by
+  a native.
