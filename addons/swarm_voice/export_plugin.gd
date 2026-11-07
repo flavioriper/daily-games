@@ -26,5 +26,9 @@ class AndroidExport extends EditorExportPlugin:
 	func _supports_platform(platform: EditorExportPlatform) -> bool:
 		return platform is EditorExportPlatformAndroid
 
+	## Debug exports only (the Firebase testers' APKs): a release export is the
+	## Play build, which must carry no microphone code (tools/release_android.sh).
 	func _get_android_libraries(_platform: EditorExportPlatform, debug: bool) -> PackedStringArray:
-		return PackedStringArray(["res://addons/swarm_voice/android/swarm_voice.%s.aar" % ("debug" if debug else "release")])
+		if not debug:
+			return PackedStringArray()
+		return PackedStringArray(["res://addons/swarm_voice/android/swarm_voice.debug.aar"])

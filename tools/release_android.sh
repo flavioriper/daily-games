@@ -47,6 +47,15 @@ GODOT="$godot_bin" tools/patch_android_template.sh
 perl -pi -e 's{^gradle_build/export_format=\d+}{gradle_build/export_format=1}; s{^version/code=\d+}{version/code='"$code"'}' export_presets.cfg
 grep -q '^gradle_build/export_format=1' export_presets.cfg || { echo "preset did not switch to AAB"; exit 1; }
 
+# The Play build carries no microphone, like the App Store one (App Review
+# rejected iOS 0.1.1 under 2.5.19 for the Swarm's mic code, 2026-11-06): no
+# RECORD_AUDIO, no Godot audio input. The SwarmVoice library is left out of
+# release exports by its own export plugin. Firebase debug APKs keep all three.
+perl -pi -e 's{^permissions/record_audio=true$}{permissions/record_audio=false}' export_presets.cfg
+perl -pi -e 's{^driver/enable_input=true$}{driver/enable_input=false}' project.godot
+grep -q '^permissions/record_audio=false$' export_presets.cfg && grep -q '^driver/enable_input=false$' project.godot \
+  || { echo "could not take the microphone out of the Play build"; exit 1; }
+
 rm -f "$out"
 GODOT_ANDROID_KEYSTORE_RELEASE_PATH="$keystore" \
 GODOT_ANDROID_KEYSTORE_RELEASE_USER=upload \
