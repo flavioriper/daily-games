@@ -259,11 +259,16 @@ static func send_silence(on: bool) -> void:
 ## The mic is open and has given only exact zeros (or nothing) for
 ## MIC_DEAD seconds and never a sound this call: a refused mic. A mic that
 ## has worked is never called dead (a phone may gate a quiet room to zeros).
-## Never with the test tone.
+## Never with the test tone, and never on the SwarmVoice plugin: its voice
+## processing gives exact zeros while it starts and while the Swarm talks, and
+## the screen asked the phone for the permission before the call (2026-11-07:
+## an allowed iPhone was sent to Settings, its call ended in 1.5 s of greeting).
 static func mic_dead() -> bool:
 	if _call == null or test_tone_hz > 0.0:
 		return false
 	var c := _call
+	if c._nat:
+		return false
 	return c._live and not c._stopping and not c._silence and not c._mic_alive and Time.get_ticks_msec() - c._heard_at >= int(MIC_DEAD * 1000.0)
 
 

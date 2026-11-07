@@ -104,6 +104,17 @@ never given a non-zero sample in the call (`_mic_alive`): a refused mic
 never does, a phone gating a quiet room to zeros did once. Draw calls on the
 live room with three lines of subtitles: 27 (39 with the button).
 
+**iOS asks iOS, not the silence (2026-11-07).** The first TestFlight calls
+on a tester's iPhone (2209, 2252) ended at once with `BOT_MIC_REFUSED` while
+Settings showed the mic allowed. On the SwarmVoice path the call is full
+duplex, so `send_silence` never resets the clock: Apple's voice processing
+gives exact zeros while it starts and while the Swarm greets, and 1.5 s of
+greeting read as a refused mic. Now the plugin has `micPermission()` (0 not
+asked, 1 refused, 2 allowed) and `requestMic()`; `_begin_call` on iOS asks
+before dialing (the sheet comes before the call, up to `PERMISSION_WAIT`),
+and `mic_dead()` is never true on the plugin. The zero check stays for
+Godot's raw mic. Cause inferred from the code, not from a device log.
+
 ## The ten voices (2026-11-06)
 
 Boyd's low rasp is gone. The user's rule for any Swarm voice: "a warm,

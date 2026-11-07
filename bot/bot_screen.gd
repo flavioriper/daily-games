@@ -303,10 +303,26 @@ func _on_foreground() -> void:
 	_status.text = tr("BOT_REDIAL")
 
 
-## The mic permission (Android asks here; iOS and desktops ask when the mic
-## opens), then the token; either missing is the offline face.
+## The mic permission (Android and an iOS with the SwarmVoice plugin ask here;
+## desktops ask when the mic opens), then the token; either missing is the
+## offline face.
 func _begin_call(n: int) -> void:
 	_status.text = tr("BOT_WAKING")
+	var nv := BotCall.native()
+	if OS.get_name() == "iOS" and nv != null and nv.has_method("micPermission"):
+		# iOS is asked, never the mic's silence (BotCall.mic_dead): the sheet
+		# comes before the call, and a refusal is iOS's word for it.
+		if int(nv.micPermission()) == 0:
+			nv.requestMic()
+			var tree := get_tree()
+			var t0 := Time.get_ticks_msec()
+			while int(nv.micPermission()) == 0 and Time.get_ticks_msec() - t0 < int(PERMISSION_WAIT * 1000.0):
+				await tree.process_frame
+		if n != _open_n:
+			return
+		if int(nv.micPermission()) != 2:
+			_go_offline("BOT_MIC_REFUSED", 0.0, true)
+			return
 	if OS.get_name() == "Android" and not _has_mic():
 		var granted := OS.request_permission(MIC_PERMISSION)
 		if not granted:

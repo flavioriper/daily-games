@@ -66,6 +66,8 @@ protected:
 		ClassDB::bind_method(D_METHOD("queued"), &SwarmVoice::queued);
 		ClassDB::bind_method(D_METHOD("level"), &SwarmVoice::level);
 		ClassDB::bind_method(D_METHOD("stop"), &SwarmVoice::stop);
+		ClassDB::bind_method(D_METHOD("micPermission"), &SwarmVoice::mic_permission);
+		ClassDB::bind_method(D_METHOD("requestMic"), &SwarmVoice::request_mic);
 	}
 
 public:
@@ -218,6 +220,47 @@ public:
 		running = true;
 		NSLog(@"SwarmVoice: started, voice processing %d, mic %@", vp, in_format);
 		return true;
+	}
+
+	/// The mic permission as iOS holds it: 0 not asked yet, 1 refused, 2 allowed.
+	/// The screen asks this, never the mic's silence: Apple's voice processing
+	/// gives exact zeros while it starts and while the Swarm talks, so a quiet
+	/// allowed mic and a refused one sound the same (2026-11-07).
+	int mic_permission() const {
+		if (@available(iOS 17.0, *)) {
+			switch ([AVAudioApplication sharedInstance].recordPermission) {
+				case AVAudioApplicationRecordPermissionGranted:
+					return 2;
+				case AVAudioApplicationRecordPermissionDenied:
+					return 1;
+				default:
+					return 0;
+			}
+		}
+		switch ([AVAudioSession sharedInstance].recordPermission) {
+			case AVAudioSessionRecordPermissionGranted:
+				return 2;
+			case AVAudioSessionRecordPermissionDenied:
+				return 1;
+			default:
+				return 0;
+		}
+	}
+
+	/// Shows the system's mic sheet when it was never answered; the answer is read back with micPermission.
+	void request_mic() {
+		if (mic_permission() != 0) {
+			return;
+		}
+		if (@available(iOS 17.0, *)) {
+			[AVAudioApplication requestRecordPermissionWithCompletionHandler:^(BOOL granted) {
+				NSLog(@"SwarmVoice: mic permission %d", granted);
+			}];
+			return;
+		}
+		[[AVAudioSession sharedInstance] requestRecordPermission:^(BOOL granted) {
+			NSLog(@"SwarmVoice: mic permission %d", granted);
+		}];
 	}
 
 	/// The echo canceller is on the mic: the call may stay full duplex.
