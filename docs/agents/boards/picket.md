@@ -90,3 +90,28 @@
     plots. Draw calls 83-89 playing, 148-150 at the win. Mine, the user's
     to call: the card on every band, sets struck only by the plot's own
     numbers, Lost Tags retired, the pencil-step grading. Not on a phone.
+- **The daily theme, 2026-11-07** (the roadmap's C row, taken on the
+  user's "do everything autonomous"; the planned "tags hang from theme
+  things" was decoration only and dropped). On a daily whose night pictures
+  this phone holds (`bank_step` 0, `daily_key` set: never New, never the
+  tutorial's `Sheet`), the night's 24 picture (else the 12) lies in beads
+  under the grid, each bead belonging to the square under its middle (about
+  three beads a square on the nine, four on the six). A plot come right lets
+  its beads through at `BEAD_A` 0.32 under the fences and numerals,
+  rippling out from its tag (`REVEAL_STEP` a bead, `REVEAL_TIME` each), so
+  the garden grows the picture plot by plot (the picture-reveal reward
+  daily-challenge sudoku apps use); undo hides them again, since they
+  follow `_stand`. At 0.42 the dark beads fought the numerals. On the win,
+  `THEME_AT` 0.85 s after the solve (Sudoku's wave has passed), a paper
+  sheet settles over the grid and tags (`SHEET_TIME`) and the picture
+  pours onto it bottom row first (`POUR`), theme cue as it starts, a sun
+  sparkle as it lands; the dance and confetti run on under/over it. The
+  card waits `THEME_HOLD` 0.6 s longer and names it: `PK_WIN_THEME` "Grown
+  in the plots: %s! %s". A reopened themed day shows the sheet at once;
+  `day_dict` says source `theme`. The deal never reads the theme. Two
+  meshes, +2 draw calls in play: `_shot_picket.gd -- <dir> d=<n> theme`
+  (or `night=YYYYMMDD`) adds a half-grown shot and the pour; Medium 94-123
+  playing, Hard 100-136, 152 won. Sounds: `theme` new (the boards' wrap
+  climbing), and `boing` moved from Sudoku's wooden tock to the bank's
+  token in Picket's set only (Sudoku's own set is untouched). Owed: phone,
+  ear, pt/es native, reduce motion unseen.

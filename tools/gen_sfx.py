@@ -2741,6 +2741,13 @@ SETS = {
 SETS["picket"] = {
     **SETS["sudoku"],
     "plot":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -13, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:2,5,9", "tight"),
+    # 2026-11-07 (the daily theme): `theme`, the boards' wrap climbing an
+    # octave, as the picture the plots grew pours onto the paper on the
+    # win. boing (the number hopping, a thing set down) joins the house
+    # pops here: Sudoku's wooden tock was the one action of the set that
+    # was not a bank pop.
+    "theme":    ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -15, FOLEY, "bank:wrap", "cut:0.1", "notes:0.06:7,12,16", "tight"),
+    "boing":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.15:0,4,2", "tight"),
 }
 
 

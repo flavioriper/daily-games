@@ -17,6 +17,9 @@ var _f := 0
 var _step := 0
 var _diag: Control
 var _plot := -1
+## `theme` (or `night=YYYYMMDD`): the plots grow the newest cached night's
+## thing (the harness's backend never starts, so it is handed in).
+var _night := ""
 
 func _initialize() -> void:
 	for a in OS.get_cmdline_user_args():
@@ -28,6 +31,10 @@ func _initialize() -> void:
 				_page = int(a.substr(4))
 		elif a == "card":
 			_step = 60
+		elif a == "theme":
+			_night = "newest"
+		elif a.begins_with("night="):
+			_night = a.substr(6)
 		else:
 			_dir = a
 	var progress = load("res://core/progress.gd")
@@ -45,6 +52,29 @@ func _shot(name: String) -> void:
 	var calls := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
 	root.get_texture().get_image().save_png("%s/pk_%s.png" % [_dir, name])
 	print("shot %s draw_calls=%d" % [name, calls])
+
+## The night's thing, as the board would read it.
+func _themed() -> Dictionary:
+	var cache := "/Users/flavioriper/Library/Application Support/Godot/app_userdata/Peeplet Daily/backend_cache"
+	var files: Array = []
+	for f in DirAccess.get_files_at(cache):
+		if f.begins_with("pictures-202611") and f.ends_with("-content.json"):
+			files.append(f)
+	files.sort()
+	var pick := String(files[-1]) if _night == "newest" else "pictures-%s-content.json" % _night
+	var doc = JSON.parse_string(FileAccess.get_file_as_string(cache + "/" + pick))
+	for side in load("res://puzzles/picket2d.gd").THEMED_SIZES:
+		var p = doc.sizes.get(str(side))
+		if p is Dictionary:
+			print("theme: ", pick, " ", side, " ", p.id)
+			return {"id": "themed_" + String(p.id), "name": String(p.name.en).capitalize(), "rows": p.rows}
+	return {}
+
+func _theme_on() -> void:
+	if _night == "":
+		return
+	_b._theme = _themed()
+	_b._theme_beads = _b._lay_beads()
 
 func _tap(i: int) -> void:
 	var n: int = load("res://puzzles/sudoku_gen.gd").N
@@ -87,12 +117,22 @@ func _process(_delta: float) -> bool:
 			_host = _menu.get_child(_menu.get_child_count() - 1)
 		if _f == 7200:
 			_b = _host._puzzle
+			if _night != "":
+				_theme_on()
+				_b.restore_completed_board()
+				_b.queue_redraw()
+				return false
 			_shot("reopen")
 			print("reopen done=%s" % _b.is_done())
+			return true
+		if _f == 7203:
+			_shot("reopen")
+			print("reopen done=%s day=%s" % [_b.is_done(), _b.day_dict().get("source")])
 			return true
 		return false
 	if _b == null:
 		_b = _host._puzzle
+		_theme_on()
 	var st = _b.state
 	match _step:
 		0:
@@ -136,6 +176,21 @@ func _process(_delta: float) -> bool:
 				_shot("plot_done")
 				_step = 5
 				_f = 5000
+				if _night != "":
+					_step = 4
+					_f = 4000
+		4:
+			# half the board's plots come right, for the garden half grown
+			if _f == 4002:
+				for p in st.plots.size():
+					if p % 2 == 0:
+						for i in st.plots[p]:
+							if st.grid[i] != st.sol[i]:
+								_put(i, st.sol[i])
+			if _f == 4060:
+				_shot("half")
+				_step = 5
+				_f = 5000
 		5:
 			if _b.is_done():
 				_step = 6
@@ -148,6 +203,11 @@ func _process(_delta: float) -> bool:
 		6:
 			if _f == 6030:
 				_shot("won_early")
+			if _night != "" and _f == 6075:
+				_shot("won_pour")
+			if _night != "" and _f == 6140:
+				_shot("won_whole")
+				print("subtitle: ", _b.flat_win().subtitle)
 			if _f == 6260:
 				_shot("won")
 				_host.closed.emit()

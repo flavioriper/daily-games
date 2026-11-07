@@ -29,6 +29,7 @@ extends "res://puzzles/sudoku2d.gd"
 
 const PicketState = preload("res://puzzles/picket_state.gd")
 const PicketWorld = preload("res://puzzles/picket_world.gd")
+const ThemedPictures = preload("res://core/themed_pictures.gd")
 
 ## The fence: one soft line inset from the cells' rules, unbroken round the
 ## plot (a dashed one read as a web page's border, the user's "canvas
@@ -83,6 +84,28 @@ const CARD_W := 1080.0
 const CARD_TWO := 100.0
 const CARD_PAD_ONE := 9.0
 
+## The daily theme (2026-11-07). On a daily whose night pictures this phone
+## holds (never New, never the tutorial's sheet), the day's thing lies in
+## beads under the grid, the 24 first (about three beads a square), else the
+## 12. A plot come right lets its squares' beads through, faint (BEAD_A)
+## under the numbers, rippling out from its tag (REVEAL_STEP a bead, each
+## swelling in over REVEAL_TIME), so the garden grows the picture plot by
+## plot, its name kept for the win. On the win, once Sudoku's wave has
+## passed (THEME_AT), a paper sheet settles over the grid (SHEET_TIME) and
+## the picture pours onto it whole, bottom row first (POUR), with the theme
+## cue and a sparkle; the card waits THEME_HOLD longer and names it. The
+## deal never reads the theme. Pale beads are shaded so they read on paper.
+const THEMED_SIZES := [24, 12]
+const BEAD_A := 0.32
+const REVEAL_STEP := 0.022
+const REVEAL_TIME := 0.32
+const THEME_AT := 0.85
+const SHEET_TIME := 0.3
+const POUR := 0.75
+const THEME_HOLD := 0.6
+const PAINT_PALE := 0.82
+const PAINT_PALE_SHADE := 0.12
+
 ## Each plot's standing as last diffed (PicketState.plot_standing).
 var _stand := PackedInt32Array()
 var _tag_hop: Dictionary = {}     # plot -> at
@@ -91,10 +114,24 @@ var _fence_mesh: ArrayMesh
 var _fence_shown: ArrayMesh
 var _fence_key := ""
 var _card_shown: ArrayMesh
+## The day's thing ({id, name, rows}) on a themed daily, else {}; its beads
+## as [row, col, cell, colour]; when each plot's beads began to ripple in;
+## when the win's sheet began (INF none); the two bead meshes, their keys,
+## and until when the play one must be built every frame.
+var _theme: Dictionary = {}
+var _theme_beads: Array = []
+var _reveal_at: Dictionary = {}   # plot -> at
+var _theme_at := INF
+var _beads_mesh: ArrayMesh
+var _beads_shown: ArrayMesh
+var _beads_key := ""
+var _beads_until := -INF
+var _sheet_mesh: ArrayMesh
+var _sheet_shown: ArrayMesh
 
 ## Sudoku's map, and a plot come right bumps as a finished row does
 ## (docs/agents/haptics.md).
-const PICKET_HAPTICS := {"plot": Haptics.BUMP}
+const PICKET_HAPTICS := {"plot": Haptics.BUMP, "theme": Haptics.GOOD}
 
 func puzzle_id() -> String: return "picket"
 func title() -> String: return "Picket Sums"
@@ -163,6 +200,12 @@ func build(rng: RandomNumberGenerator, difficulty: int) -> void:
 	_tag_hop = {}
 	_tag_shake = {}
 	_fence_key = ""
+	_theme = _night_picture()
+	_theme_beads = _lay_beads()
+	_reveal_at = {}
+	_theme_at = INF
+	_beads_key = ""
+	_beads_until = -INF
 
 func day_dict() -> Dictionary:
 	if state == null or state.sol.is_empty():
@@ -182,7 +225,8 @@ func day_dict() -> Dictionary:
 		answer.append({"t": str(int(state.sol[i])), "given": v > 0})
 	var banked: bool = state.band >= 2 and InsaneBank.size("picket" if state.band == 3 else "picket_hard") > 0
 	return {
-		"source": "bank" if banked else "generator", "kind": "grid",
+		"source": "theme" if themed() else ("bank" if banked else "generator"), "kind": "grid",
+		"theme": String(_theme.get("id", "")),
 		"payload": {"n": n, "puzzle": Array(state.given), "plots": Array(state.cage_of),
 			"sums": Array(state.sums)},
 		"solution": {"grid": Array(state.sol)},
@@ -192,7 +236,12 @@ func day_dict() -> Dictionary:
 	}
 
 func flat_win() -> Dictionary:
+	if themed():
+		return {"faces": [], "subtitle": tr("PK_WIN_THEME") % [String(_theme.name), tr("PK_WIN")]}
 	return {"faces": [], "subtitle": tr("PK_WIN")}
+
+func win_delay() -> float:
+	return super() + (THEME_HOLD if themed() and not Motion.reduce else 0.0)
 
 func share_glyphs() -> String:
 	if state == null:
@@ -211,6 +260,10 @@ func restore_completed_board() -> void:
 	_tag_hop = {}
 	_tag_shake = {}
 	_fence_key = ""
+	_reveal_at = {}
+	_beads_key = ""
+	# a reopened themed day shows the picture the plots grew
+	_theme_at = _now() - 10.0 if themed() else INF
 
 # --- the plots' moments ---
 
@@ -236,6 +289,9 @@ func _plot_up(p: int, now: float) -> void:
 	var cells: PackedInt32Array = state.plots[p]
 	_tag_hop[p] = now
 	_busy_for(TAG_HOP_TIME)
+	if themed() and not Motion.reduce:
+		_reveal_at[p] = now
+		_beads_until = maxf(_beads_until, now + REVEAL_TIME + REVEAL_STEP * 40.0)
 	if not Motion.reduce:
 		for k in cells.size():
 			var i := cells[k]
@@ -248,7 +304,7 @@ func _plot_up(p: int, now: float) -> void:
 		fx.sparkle(_tag_mid(p), Pal.LEAF)
 
 func _moving(now: float) -> bool:
-	return super(now) or _live(_tag_hop, now, TAG_HOP_TIME) \
+	return super(now) or now < _beads_until or _live(_tag_hop, now, TAG_HOP_TIME) \
 		or _live(_tag_shake, now, Motion.SHIVER_TIME)
 
 # --- the drawing ---
@@ -263,10 +319,14 @@ func _draw_numerals(now: float, pop: float, centre: Vector2) -> void:
 		_fence_key = "" if moving else key
 	_fence_shown = _fence_mesh
 	var xf := Transform2D(0.0, Vector2.ONE * pop, 0.0, centre * (1.0 - pop))
+	if themed():
+		_draw_beads(now, xf)
 	if _fence_shown != null:
 		draw_mesh(_fence_shown, null, xf)
 	super(now, pop, centre)
 	_draw_tags(now, pop, centre)
+	if themed() and now >= _theme_at:
+		_draw_sheet(now, xf)
 
 func _sel_plot() -> int:
 	return state.cage_of[_sel] if _sel >= 0 and state != null else -1
@@ -535,3 +595,130 @@ func _thin_alpha() -> float:
 ## Sudoku's pencil marks packed a little tighter and moved off the tag.
 func _note_spot(n: int) -> Vector2:
 	return super(n) * NOTE_PACK + NOTE_NUDGE * _cell
+
+# --- the daily theme (2026-11-07) ---
+
+func themed() -> bool:
+	return not _theme.is_empty()
+
+## The night's thing, the first size this phone holds; {} on New, on the
+## tutorial's sheet, or with no night cached.
+func _night_picture() -> Dictionary:
+	if bank_step != 0 or daily_key == 0:
+		return {}
+	for side in THEMED_SIZES:
+		var pic := ThemedPictures.picture(daily_key, int(side))
+		if not pic.is_empty():
+			return pic
+	return {}
+
+## Every bead the picture has, with the square under its middle and its
+## colour (pale ones shaded to read on paper).
+func _lay_beads() -> Array:
+	var out: Array = []
+	if not themed():
+		return out
+	var rows: Array = _theme.rows
+	var n := rows.size()
+	var letters: Dictionary = ThemedPictures.letters()
+	for r in n:
+		var row: String = rows[r]
+		for c in row.length():
+			if row[c] == ".":
+				continue
+			var bead = Pal.PG_BEADS.get(String(letters.get(row[c], "")))
+			if bead == null:
+				continue
+			var face: Color = bead
+			if face.get_luminance() > PAINT_PALE:
+				face = face.darkened(PAINT_PALE_SHADE)
+			var cell := int((r + 0.5) * Gen.N / n) * Gen.N + int((c + 0.5) * Gen.N / n)
+			out.append([r, c, cell, face])
+	return out
+
+## One bead, `bead` wide at `at` (its top left), grown by `grow`, at `a`.
+func _bead(b: Face.Builder, at: Vector2, bead: float, grow: float, face: Color, a: float) -> void:
+	var sz := Vector2.ONE * bead * 0.9 * lerpf(0.3, 1.0, grow)
+	var lo := at + (Vector2.ONE * bead - sz) * 0.5
+	b.fan(Face.Builder.round_rect(lo + Vector2(0.0, bead * 0.06), sz, bead * 0.22), Color(face.darkened(0.3), a))
+	b.fan(Face.Builder.round_rect(lo, sz, bead * 0.22), Color(face, a))
+
+## The beads of the plots come right, faint under the fences and numbers;
+## one mesh, built again only while a plot's beads ripple in or the grid
+## moves.
+func _draw_beads(now: float, xf: Transform2D) -> void:
+	var key := "%s|%s|%s" % [_cell, _grid, _stand]
+	if key != _beads_key or now <= _beads_until or _beads_mesh == null:
+		_beads_key = key
+		_beads_mesh = _bead_mesh(now)
+	_beads_shown = _beads_mesh
+	if _beads_shown != null:
+		draw_mesh(_beads_shown, null, xf)
+
+func _bead_mesh(now: float) -> ArrayMesh:
+	var n: int = (_theme.rows as Array).size()
+	var bead: float = _cell * Gen.N / float(n)
+	var b := Face.Builder.new()
+	for d in _theme_beads:
+		var p: int = state.cage_of[int(d[2])]
+		if p >= _stand.size() or _stand[p] != 1:
+			continue
+		var k := 1.0
+		if _reveal_at.has(p) and not Motion.reduce:
+			var tag := _corner_of(int(state.plots[p][0]))
+			var at := _grid + Vector2(int(d[1]), int(d[0])) * bead
+			k = clampf((now - float(_reveal_at[p]) - at.distance_to(tag) / bead * REVEAL_STEP) / REVEAL_TIME, 0.0, 1.0)
+		if k <= 0.0:
+			continue
+		_bead(b, _grid + Vector2(int(d[1]), int(d[0])) * bead, bead, Motion.back_out(k), d[3], BEAD_A * minf(k * 2.0, 1.0))
+	return b.mesh() if not b.verts.is_empty() else null
+
+## The win's sheet: paper settling over the grid, then the picture poured
+## onto it whole, bottom row first. Built every frame while it pours.
+func _draw_sheet(now: float, xf: Transform2D) -> void:
+	var since := now - _theme_at
+	var settled := since > SHEET_TIME + POUR + REVEAL_TIME
+	if not settled or _sheet_mesh == null:
+		_sheet_mesh = _build_sheet(since)
+	_sheet_shown = _sheet_mesh
+	if _sheet_shown != null:
+		draw_mesh(_sheet_shown, null, xf)
+
+func _build_sheet(since: float) -> ArrayMesh:
+	var n: int = (_theme.rows as Array).size()
+	var field: float = _cell * Gen.N
+	var bead := field / float(n)
+	var k := _scale()
+	var b := Face.Builder.new()
+	var sheet := clampf(since / SHEET_TIME, 0.0, 1.0)
+	var inset := WASH_INSET * k
+	b.fan(Face.Builder.round_rect(_grid - Vector2.ONE * inset, Vector2.ONE * (field + 2.0 * inset), WASH_R * k * 2.0),
+		Color(TAG_FACE, ease(sheet, 0.5) if not Motion.reduce else 1.0))
+	for d in _theme_beads:
+		var r: int = d[0]
+		var g := 1.0
+		if not Motion.reduce:
+			var e := since - SHEET_TIME * 0.5 - float(n - 1 - r) / float(maxi(n - 1, 1)) * POUR
+			g = clampf(e / REVEAL_TIME, 0.0, 1.0)
+		if g <= 0.0:
+			continue
+		_bead(b, _grid + Vector2(int(d[1]), r) * bead, bead, Motion.back_out(g), d[3], minf(g * 2.0, 1.0))
+	return b.mesh() if not b.verts.is_empty() else null
+
+## The last number on a themed day: Sudoku's wave and party, then the sheet
+## and the picture poured onto it as the theme cue rings. Under reduce
+## motion the picture is simply there.
+func _on_solved() -> void:
+	super()
+	if not themed():
+		return
+	var now := _now()
+	if Motion.reduce:
+		_theme_at = now
+		fx.cue("theme")
+		return
+	_theme_at = now + THEME_AT
+	_busy_for(THEME_AT + SHEET_TIME + POUR + REVEAL_TIME + 0.1)
+	_after(THEME_AT + SHEET_TIME * 0.5, fx.cue.bind("theme"))
+	_after(THEME_AT + SHEET_TIME * 0.5 + POUR + REVEAL_TIME * 0.5, func() -> void:
+		fx.sparkle(_centre(), Pal.SUN))
