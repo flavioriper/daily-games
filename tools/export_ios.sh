@@ -49,6 +49,22 @@ if [[ $beta == 1 ]]; then
   grep -q 'custom_features="beta"' export_presets.cfg \
     || { echo "could not set the beta feature on the iOS preset" >&2; exit 1; }
 fi
+if [[ $channel == store ]]; then
+  # The App Store build carries no microphone at all. App Review rejected
+  # 0.1.1 (2188.1) on 2026-11-06 under 2.5.19: hiding the Swarm at runtime is
+  # not enough, the scan reads the binary and found mic listening. So the
+  # store export drops the SwarmVoice plugin, the mic usage text (and its
+  # translations) and Godot's audio input, as 0.1.0 (2065) shipped.
+  perl -0pi -e 's/^plugins\/SwarmVoice=true$/plugins\/SwarmVoice=false/m;
+    s/^privacy\/microphone_usage_description="[^"]*"$/privacy\/microphone_usage_description=""/m;
+    s/^privacy\/microphone_usage_description_localized=\{[^}]*\}$/privacy\/microphone_usage_description_localized={}/m' export_presets.cfg
+  perl -pi -e 's/^driver\/enable_input=true$/driver\/enable_input=false/' project.godot
+  grep -q '^plugins/SwarmVoice=false$' export_presets.cfg \
+    && grep -q '^privacy/microphone_usage_description=""$' export_presets.cfg \
+    && grep -q '^privacy/microphone_usage_description_localized={}$' export_presets.cfg \
+    && grep -q '^driver/enable_input=false$' project.godot \
+    || { echo "could not take the microphone out of the store build" >&2; exit 1; }
+fi
 rm -rf "$out"; mkdir -p "$out"
 godot --headless --path . "$mode" iOS "$out/peeplet-daily.ipa"
 echo "$channel" > "$out/channel"
