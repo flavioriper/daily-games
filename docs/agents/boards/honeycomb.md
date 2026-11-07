@@ -98,3 +98,59 @@ list in order of placement instead of reordering, something more elegant".
 - Draw calls (`opengl3_angle`, 810x1440): 110-119 in play (Easy, Medium,
   Insane), 170 on the win, 146 a tutorial page.
 - Owed: the `rank` cue heard, the phone, pt/es names read by a speaker.
+
+## The numbers made plain (2026-11-07, autonomous)
+
+The user: "players are bit lost about how the numbers there works, let's
+create something with more richer animations, use some similar game on web
+as reference ... honey animations on words, bee, everywhere". The web
+reference was the comb-words genre's hint grid (words by first letter) and
+its two-letter list (words by first two letters), both counted on a page
+apart from the board; here they are said where the finger is.
+
+- **The live map** (`_draw_map`, `State.starts_with`): with one or two
+  letters spelt, a line under the word says "N words left start with CA"
+  (`HC_MAP_ONE/_N/_NONE`), honey for some, dim for none. Nothing past two
+  letters: that would spell the word. The cell whose letter leads the word
+  lights its number in honey, 1.25 big, so the line and the number are seen
+  to be the same count.
+- **The cell numbers** (`_draw_badge`): a word found from a letter bumps its
+  number and drops a "-1" as the word lands (the number holds its old count
+  until then, `_minus`, keyed by letter so a flight on Insane cannot move
+  it); a letter with words found and none left is a green tick, a letter
+  that never had any a dim 0. Before the first word the words' box says
+  what the numbers are (`HC_MAP_TIP`).
+- **Honey is a drop a letter, seen** (`_pour`, `_drops`, `_draw_drops`,
+  `_land_drops`): each letter of a word taken leaves the row as a drop
+  (`Art.drop`) on an arc into the strip's tip, `DROP_STEP` apart, and a full
+  comb's seven more leave the cells. The strip and its count fill as each
+  lands (`_honey_shown`: drops in flight are not in it), each landing the
+  `drop` cue (the bank's plop, pitched up the run, echo haptic) and a swell;
+  the last a sparkle. A rank lights when the honey that reaches it lands
+  (`_rank_seen`), with a worker bee zipping along the strip to its pip. The
+  win waits for the last drop (`_pour_end` in `_phase_solved` and
+  `win_delay`).
+- **The strip's words** say the count in words: the honey in the jar rides
+  the fill's tip on a honey disc (`_draw_tip`), and the line under it is
+  "Buzzing · 26 more honey fills the jar" (`HC_TO_GO_ONE/_N`, then
+  `HC_HONEY_ONE/_N` once full). The bare "20 / 46" is gone.
+- **More life**: a letter tapped flies from its cell into the row
+  (`TYPE_FLY`, `_typed_from`); a refused word shivers and its letters drip
+  off the row; the queen loops for a word taken and shakes for one refused;
+  a full comb floods the ring with honey cell by cell (`FLOOD_STEP`) and,
+  with the win, whirls the swarm round the comb; a new chip grows a honey
+  drip that falls (`_draw_drip`). Reduce motion: no drops, the honey lands
+  at once.
+- **Tutorial**: a MAP page after QUEEN ("The numbers", `HTP_HC_MAP`): one
+  letter and a pause, a second and a pause, then the word, its cell's number
+  counting down. `HC_RULES_MAP` rewritten for the line, the drops and the
+  tip.
+- Trap met: a bee drawn before `_draw_bee` borrows meshes that `_draw_bee`
+  rebuilds while the layout eases into the win ("mesh is null" x6); the
+  rank bee draws after the drifters. The badge, drop and tick meshes are
+  kept a frame when replaced (`_kept`).
+- Draw calls (`opengl3_angle`, 810x1440): 113-127 in play (Medium,
+  Insane), 170-173 on the win, 154 the MAP tutorial page. Suite 303,248
+  pass / 0 fail; `_win.gd -- honeycomb` PASS.
+- Owed: the `drop` cue heard (and whether a run of up to 14 plops is too
+  many), the phone, pt/es lines read by a speaker.

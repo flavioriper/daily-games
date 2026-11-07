@@ -210,6 +210,16 @@ func starts() -> Dictionary:
 			out[w[0]] = int(out.get(w[0], 0)) + 1
 	return out
 
+## How many of the day's words still to find begin with `prefix` (the live
+## map under the word being spelt: one letter, then two).
+func starts_with(prefix: String) -> int:
+	var n := 0
+	for i in open_words():
+		var w: String = words.words[i]
+		if w.begins_with(prefix) and not found.has(w):
+			n += 1
+	return n
+
 ## The day's full combs not found yet.
 func fulls_left() -> int:
 	var n := 0

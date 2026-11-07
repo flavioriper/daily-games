@@ -167,3 +167,23 @@ static func chip(b, rect: Rect2, full: bool) -> void:
 	var rr := rect.size.y * 0.5
 	b.fan(Face.Builder.round_rect(rect.position + Vector2(0.0, rect.size.y * 0.1), rect.size, rr), HONEY_DEEP if full else WAX_DEEP)
 	b.fan(Face.Builder.round_rect(rect.position, rect.size, rr), HONEY if full else WAX_LIT)
+
+## A drop of honey, `r` its round belly's radius, about `at` (the belly's
+## middle), its point up; a lit fleck on the belly.
+static func drop(b, at: Vector2, r: float, colour: Color = HONEY, edge: Color = HONEY_DEEP) -> void:
+	var pts := PackedVector2Array()
+	pts.append(at + Vector2(0.0, -r * 2.1))
+	for k in 17:
+		var a := -PI * 0.5 + 1.07 + (TAU - 2.14) * k / 16.0
+		pts.append(at + Vector2(cos(a), sin(a)) * r)
+	var rim := PackedVector2Array()
+	for p in pts:
+		rim.append(at + (p - at) * 1.12 + Vector2(0.0, r * 0.08))
+	b.fan(rim, edge)
+	b.fan(pts, colour)
+	b.ellipse(at + Vector2(-r * 0.36, -r * 0.3), r * 0.2, r * 0.3, Color(HONEY_LIT.lightened(0.5), 0.85))
+
+## A small tick, a letter whose words are all found.
+static func tick(b, at: Vector2, r: float, ink: Color) -> void:
+	b.stroke(PackedVector2Array([at + Vector2(-r * 0.75, 0.0), at + Vector2(-r * 0.2, r * 0.55), at + Vector2(r * 0.8, -r * 0.6)]),
+		r * 0.32, ink, false)

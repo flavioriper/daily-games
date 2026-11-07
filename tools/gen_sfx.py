@@ -1736,6 +1736,10 @@ SETS = {
         # 2026-10-28: a rank lit on the strip, four wraps climbing to the
         # fifth above (pitched up a rank at a time at play)
         "rank":     ('one single bubble of bubble wrap popped between two fingers, a soft small pop, close, very short', 0.5, -14, FOLEY, "bank:wrap", "cut:0.1", "notes:0.08:0,4,7,12", "tight"),
+        # 2026-11-07: a drop of honey landing in the strip, one a letter of
+        # a word taken; a run of them rides up the word (pitched up a drop at
+        # a time at play), so the plop, soft and round
+        "drop":     ('a single drop of thick honey falling into a jar of honey, a soft round wet plop, very short, close', 0.5, -19, FOLEY, "bank:plop", "cut:0.12", "notes:0:5", "tight"),
         "hint":     ("a small soft puff of warm air through a few leaves, light, rising and fading, short", 0.8, -16, BREEZE, "warm:1200", "steep", "ease:0.04", "body:320", "notes:0:2"),
         "enter":    ('a smooth wooden token dropped onto thick felt, a single soft rounded pop, very short', 0.5, -14, FOLEY, "bank:token", "cut:0.5", "notes:0.05:-2,1,-2,0,3,1,4", "tight"),
         "confetti": ("a soft little paper confetti pop and flutter with a tiny music box twinkle, cute", 1.0, -10, BEADBOX_TUNE, "warm:7000"),

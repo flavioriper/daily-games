@@ -3201,7 +3201,7 @@ HC_RULES,"Tap the cells to spell a word of four letters or more, then the tick t
 HC_RULES_HONEY,"Each word pours one honey a letter, and seven more for a full comb, a word with all seven letters. The day is done when the jar reaches its line.","Cada palavra despeja um de mel por letra, e sete a mais por um favo cheio, uma palavra com as sete letras. O dia termina quando o pote chega à linha.","Cada palabra vierte uno de miel por letra, y siete más por un panal lleno, una palabra con las siete letras. El día termina cuando el tarro llega a la línea."
 HC_RULES_WANDER,"Wandering Queen: every %d words the queen flies to another cell, and the words after must hold her new letter.","Rainha Andarilha: a cada %d palavras a rainha voa para outra célula, e as palavras seguintes precisam ter a nova letra dela.","Reina Errante: cada %d palabras la reina vuela a otra celda, y las palabras siguientes deben llevar su nueva letra."
 HC_RULES_SCORE,Your score is the words you found over the words you tried: entries that are not words count against it. Words already found and words too short do not.,Sua nota é as palavras achadas sobre as tentadas: entradas que não são palavras contam contra. Palavras repetidas ou curtas demais não contam.,Tu puntuación son las palabras halladas sobre las intentadas: lo que no es palabra cuenta en contra. Las repetidas y las demasiado cortas no.
-HC_RULES_MAP,"The small number under a letter counts the day's words still to find that begin with it. The strip lights three ranks on the way to the line.","O número pequeno sob uma letra conta as palavras do dia ainda por achar que começam com ela. A faixa acende três níveis no caminho até a linha.","El número pequeño bajo una letra cuenta las palabras del día aún por encontrar que empiezan con ella. La franja enciende tres rangos en el camino hasta la línea."
+HC_RULES_MAP,"The small number on a cell counts the day's words still to find that begin with its letter; spell one or two letters and the line under them says how many begin that way. Each letter of a word is a drop of honey, counted at the honey's tip; the strip lights three ranks on the way to a full jar.","O número pequeno numa célula conta as palavras do dia ainda por achar que começam com a letra dela; forme uma ou duas letras e a linha embaixo diz quantas começam assim. Cada letra de uma palavra é uma gota de mel, contada na ponta do mel; a faixa acende três níveis no caminho até o pote cheio.","El número pequeño de una celda cuenta las palabras del día aún por hallar que empiezan con su letra; forma una o dos letras y la línea de abajo dice cuántas empiezan así. Cada letra de una palabra es una gota de miel, contada en la punta de la miel; la franja enciende tres rangos en el camino hasta el tarro lleno."
 HC_NONE_YET,Your words will gather here,Suas palavras vão aparecer aqui,Tus palabras aparecerán aquí
 HC_WORDS_ONE,%d word,%d palavra,%d palabra
 HC_WORDS_N,%d words,%d palavras,%d palabras
@@ -3227,6 +3227,16 @@ HC_SAY_QUEEN,Every word needs the middle letter.,Toda palavra precisa da letra d
 HC_SAY_NOT,That is not in the word list.,Essa não está na lista.,Esa no está en la lista.
 HC_SAY_FOUND,Already in the jar.,Essa já está no pote.,Esa ya está en el tarro.
 HC_SAY_FLY,The queen flew to %s!,A rainha voou para o %s!,¡La reina voló a la %s!
+HC_TO_GO_ONE,1 more honey fills the jar,Mais 1 de mel enche o pote,1 de miel más llena el tarro
+HC_TO_GO_N,%d more honey fills the jar,Mais %d de mel enchem o pote,%d de miel más llenan el tarro
+HC_HONEY_ONE,1 honey in the jar,1 de mel no pote,1 de miel en el tarro
+HC_HONEY_N,%d honey in the jar,%d de mel no pote,%d de miel en el tarro
+HC_MAP_ONE,1 word left starts with %s,Falta 1 palavra que começa com %s,Queda 1 palabra que empieza con %s
+HC_MAP_N,%d words left start with %s,Faltam %d palavras que começam com %s,Quedan %d palabras que empiezan con %s
+HC_MAP_NONE,No word left starts with %s,Nenhuma palavra restante começa com %s,Ninguna palabra restante empieza con %s
+HC_MAP_TIP,The small number on each cell counts the words left that start with that letter.,O número pequeno em cada célula conta as palavras restantes que começam com aquela letra.,El número pequeño de cada celda cuenta las palabras restantes que empiezan con esa letra.
+HTP_HC_MAP,The numbers,Os números,Los números
+HTP_HC_MAP_BODY,The small number on a cell counts the words still to find that start with its letter. Tap a letter or two and the line under them says how many start that way.,O número pequeno numa célula conta as palavras ainda por achar que começam com a letra dela. Toque uma ou duas letras e a linha embaixo diz quantas começam assim.,El número pequeño de una celda cuenta las palabras aún por hallar que empiezan con su letra. Toca una o dos letras y la línea de abajo dice cuántas empiezan así.
 HC_WIN_ONE,"%d word, %d honey.","%d palavra, %d de mel.","%d palabra, %d de miel."
 HC_WIN_N,"%d words, %d honey.","%d palavras, %d de mel.","%d palabras, %d de miel."
 HC_WIN_FULL,A full comb among them.,Com um favo cheio entre elas.,Con un panal lleno entre ellas.

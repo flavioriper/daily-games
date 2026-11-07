@@ -96,12 +96,13 @@ func _process(_delta: float) -> bool:
 			_shot("rest")
 			print("hive %s queen %s: %d words, honey %d, line %d" % [st.letters, st.queen, st.answers.size(), st.total, st.goal])
 			var w: String = st.hint_word()
-			_type(w.left(3))
+			_type(w.left(2))
 			_step = 1
 			_f = 1000
 		1:
 			if _f == 1012:
 				_shot("spelling")
+				_b.demo_key(0)
 				_b.demo_key(0)
 				_b.demo_key(0)
 				_b.demo_key(0)
@@ -123,6 +124,8 @@ func _process(_delta: float) -> bool:
 				_b.demo_key(2)
 			if _f == 2068:
 				_shot("taken")
+			if _f == 2084:
+				_shot("pouring")
 			if _f == 2110:
 				_b.demo_key(1)
 			if _f == 2116:

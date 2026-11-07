@@ -12,6 +12,9 @@ extends Control
 ## - FULL: the hive's full comb spelt and sent: every cell rings.
 ## - WANDER (Insane): four words sent, and the queen flies to a new letter.
 ## - HINT: the bulb spells half a word, the finger spells the rest.
+## - MAP: one letter tapped and a pause (the line under the row counts the
+##   words that begin with it, its cell's number lit), a second and a pause,
+##   then the rest of the word: the cell's number counts down.
 ##
 ## A page plays until its point is made, waits a moment and starts over.
 ## Under reduce motion the board stands as it is dealt.
@@ -22,7 +25,7 @@ const Art = preload("res://ui/faces/honeycomb_art.gd")
 const Motion = preload("res://core/motion.gd")
 const Pal = preload("res://core/palette.gd")
 
-enum Lesson { SPELL, QUEEN, FULL, WANDER, HINT }
+enum Lesson { SPELL, QUEEN, FULL, WANDER, HINT, MAP }
 
 ## The bank entry the pages show (today's is skipped for the next).
 const ENTRY := 7
@@ -125,6 +128,16 @@ func _script(st) -> Array:
 			out += _spell(first)
 		Lesson.FULL:
 			out += _spell(_full_word(st))
+		Lesson.MAP:
+			if first.length() >= 2:
+				out.append(["cell", first[0]])
+				out.append(["rest", 1.3])
+				out.append(["cell", first[1]])
+				out.append(["rest", 1.3])
+				for k in range(2, first.length()):
+					out.append(["cell", first[k]])
+				out.append(["key", Art.Key.ENTER])
+				out.append(["rest", 1.2])
 		Lesson.WANDER:
 			for k in State.FLIGHT:
 				if k < plain.size():
