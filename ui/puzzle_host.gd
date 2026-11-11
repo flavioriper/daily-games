@@ -371,7 +371,7 @@ func _on_solved() -> void:
 ## is indistinguishable from a crash (a puzzle_start with nothing after it).
 func _on_ended() -> void:
 	Analytics.track("puzzle_complete", _stats().merged({"solved": false}))
-	Ads.note_finished()
+	Ads.note_finished(false)
 	_refresh()
 
 ## Leaving a board unsolved is the signal that it was too hard, too long

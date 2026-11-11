@@ -1,0 +1,16 @@
+[config]
+
+name="StoreReview"
+binary="StoreReview.xcframework"
+
+initialization="initialize_store_review_module"
+deinitialization="uninitialize_store_review_module"
+
+[dependencies]
+
+linked=[]
+embedded=[]
+system=["StoreKit.framework"]
+capabilities=[]
+files=[]
+linker_flags=[]

@@ -1,0 +1,24 @@
+// The store's own rating sheet for Android (core/review.gd decides when):
+// tools/build_store_review.sh builds both AARs into addons/store_review/android/.
+// Play's review library is not inside the AAR: the export plugin
+// (addons/store_review/export_plugin.gd) adds it to the game's gradle build.
+plugins { id 'com.android.library' }
+
+android {
+    namespace 'com.peeplet.storereview'
+    compileSdk 36
+    defaultConfig {
+        minSdk 24
+        consumerProguardFiles 'consumer-rules.pro'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // the engine the game exports with (android/build is unpacked from 4.7's template)
+    compileOnly files('../../../android/build/libs/release/godot-lib.template_release.aar')
+    compileOnly 'com.google.android.play:review:2.0.2'
+}

@@ -26,6 +26,7 @@ const AgeGate = preload("res://core/age_gate.gd")
 const Sound = preload("res://core/sound.gd")
 const AdPacing = preload("res://core/ad_pacing.gd")
 const Backend = preload("res://core/backend.gd")
+const Review = preload("res://core/review.gd")
 ## Google's published test banners. A debug build (App Distribution, a
 ## harness) always asks for these, so only the release builds the stores
 ## carry ever request the real units in project.godot's ads/ keys: a click on
@@ -53,6 +54,7 @@ var _rewarded: RewardedAd
 var _loading_interstitial := false
 var _loading_rewarded := false
 var _finished_pending := false
+var _won_pending := false
 var _fake_full := ""   # "", "1" (always earns) or "skip" (never earns)
 ## The ad after a finished game is out for now (the user, 2026-10-06): none is
 ## loaded and none shown, whatever config/ads says. The pacing still counts
@@ -379,18 +381,26 @@ func _drop_stale() -> void:
 		_load_rewarded()
 
 ## A game (board, Arcade run, Versus game) ended.
-func note_finished() -> void:
+## `won` is false for a board that ran out unsolved (Hidden Word): it still
+## counts for the ad pacing, but the rating ask only ever follows a win.
+func note_finished(won := true) -> void:
 	pacing.note_finished(Daily.date_key())
 	_finished_pending = true
+	_won_pending = won
 	_save_state()
 
 ## The player just left a screen for the list: show the interstitial if a
-## finished game earned one since the last call and pacing allows.
+## finished game earned one since the last call and pacing allows. When no
+## ad shows, it is the moment core/review.gd may ask for a rating: never both.
 func leaving_game() -> void:
 	if not _finished_pending:
 		return
 	_finished_pending = false
+	var won := _won_pending
+	_won_pending = false
 	if not post_play:
+		if won:
+			Review.after_win()
 		return
 	var now := Time.get_unix_time_from_system()
 	var today := Daily.date_key()
@@ -401,6 +411,8 @@ func leaving_game() -> void:
 		_load_interstitial()
 	if not why.is_empty():
 		Analytics.track("ad_interstitial_skipped", {"reason": why})
+		if won:
+			Review.after_win()
 		return
 	if not _fake_full.is_empty():
 		_record_interstitial(now, today)

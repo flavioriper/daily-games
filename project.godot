@@ -60,7 +60,7 @@ window/handheld/orientation=1
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg", "res://addons/admob/plugin.cfg", "res://addons/godotx_firebase/plugin.cfg", "res://addons/swarm_voice/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg", "res://addons/admob/plugin.cfg", "res://addons/godotx_firebase/plugin.cfg", "res://addons/swarm_voice/plugin.cfg", "res://addons/store_review/plugin.cfg")
 
 [godot_mcp]
 

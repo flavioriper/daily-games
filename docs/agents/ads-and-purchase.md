@@ -228,3 +228,28 @@ stated before the 3D game left.
   loads while held is hidden, not shown; the keyboard re-place waits; release
   shows a loaded banner again. Only `bot/bot_screen.gd` holds it (open to
   close). Seen with `ADS_FAKE_BANNER`; the native hide/show not yet on a phone.
+
+## The rating ask (2026-11-11)
+
+The user, after a store check showed one Play rating and none on the App
+Store: "Add rating prompt". `core/review.gd` asks the store for its own rating
+sheet (`native/store_review`, singleton `StoreReview`, one method `request()`;
+Play's in-app review 2.0.2 on Android, `SKStoreReviewController
+requestReviewInScene:` on iOS). Built by `tools/build_store_review.sh`; the
+Android export plugin (`addons/store_review`) adds the AAR and Play's review
+library, iOS takes `ios/plugins/store_review` through `plugins/StoreReview`
+in the preset. Both store builds carry it (unlike SwarmVoice).
+
+When: after a win, as the player goes back to the list
+(`Ads.leaving_game`), and only when no interstitial shows then, never both.
+Gate: played on 3 days, 5 boards solved, at most 3 asks, 90 days apart, never
+a child band. State in `user://review.cfg` (`asks`, `last` date key). The
+store still decides whether the sheet appears: Apple shows it at most three
+times a year and never in TestFlight; Play only on a build installed from
+Play, with its own quota. Debug (App Distribution) and TestFlight (`beta`)
+builds never ask at all (TestFlight shares its save with the App Store build,
+so an ask spent there would cost the real one); `review_asked` fires only on
+store builds. Only a win counts: `Ads.note_finished(false)` (Hidden Word
+running out) never leads to an ask.
+To see the sheet on Android, install through Play internal app sharing (the
+sheet shows with Submit disabled) or the internal testing track.
