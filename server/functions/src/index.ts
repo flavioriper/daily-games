@@ -9,6 +9,8 @@ import {asked as shelvesAsked, makeDay as shelvesDay} from "./shelves";
 import {asked as cluesAsked, makeDay as cluesDay} from "./clues";
 import type {Theme} from "./theme";
 import {publishPictures, publishVistas, stagedTheme, themeWork} from "./themeday";
+import {cost, resetSpend, spendLines, tokens} from "./generate";
+import {logger} from "firebase-functions/v2";
 
 initializeApp();
 const db = getFirestore();
@@ -124,8 +126,40 @@ export const publishDay = onSchedule({
   // anthropic/); OpenRouter's is kept for any other model named by env.
   secrets: ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "NEON_AI_GATEWAY_TOKEN"],
 }, async () => {
-  await publishDays(new Date());
+  await spending("publishDay", () => publishDays(new Date()));
 });
+
+/**
+ * What a run's model text cost (2026-11-16, the user: "add logging"): one
+ * `spend` log line with the ledger, and the sums added to spend/<UTC day>
+ * so a day's money is one document read. Priced at the list prices in
+ * generate.ts, not by a bill; pictures are not counted (their answers carry
+ * no cost). Booked even when the run throws.
+ */
+async function spending(job: string, run: () => Promise<void>): Promise<void> {
+  resetSpend();
+  try {
+    await run();
+  } finally {
+    const usd = cost();
+    const t = tokens();
+    const lines = spendLines();
+    logger.info(`spend ${job} US$${usd.toFixed(4)}`, {spend: {job, usd, input: t.input, output: t.output, lines}});
+    if (lines.length > 0) {
+      const by: Record<string, FieldValue> = {};
+      for (const l of lines) by[l.name] = FieldValue.increment(l.dollars);
+      try {
+        await db.collection("spend").doc(String(dayKey(new Date()))).set({
+          usd: FieldValue.increment(usd), input: FieldValue.increment(t.input),
+          output: FieldValue.increment(t.output), runs: FieldValue.increment(1),
+          [job]: FieldValue.increment(usd), by,
+        }, {merge: true});
+      } catch (e) {
+        logger.warn(`spend ${job} not booked`, e);
+      }
+    }
+  }
+}
 
 function parsed(json: unknown): unknown {
   try {
@@ -196,7 +230,7 @@ export const themeDay = onSchedule({
   maxInstances: 1,
   secrets: ["OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "NEON_AI_GATEWAY_TOKEN"],
 }, async () => {
-  await themeWork(db, new Date());
+  await spending("themeDay", () => themeWork(db, new Date()));
 });
 
 /**

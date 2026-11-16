@@ -94,6 +94,18 @@ export function ledger(): string {
   return [...lines].sort((a, b) => b[1].dollars - a[1].dollars).map(([name, l]) =>
     `${name}: ${l.calls} asks, ${l.input} in, ${l.output} out, US$${l.dollars.toFixed(3)}`).join("\n");
 }
+/** The ledger's lines, for a run that logs and books what it spent. */
+export function spendLines(): {name: string; calls: number; input: number; output: number; dollars: number}[] {
+  return [...lines].map(([name, l]) => ({name, ...l}));
+}
+/** Everything counted so far forgotten: a warm instance runs a job many
+ *  times, and each run reports only its own. */
+export function resetSpend(): void {
+  spent = 0;
+  used.input = 0;
+  used.output = 0;
+  lines.clear();
+}
 export function tokens(): {input: number; output: number} {
   return {...used};
 }
@@ -122,8 +134,17 @@ function neonToken(): string {
   return (process.env.NEON_AI_GATEWAY_TOKEN ?? "").trim();
 }
 
+/** Whether Anthropic's models go through the Neon gateway: when its token is
+ *  set, unless DAILY_ANTHROPIC_VIA=anthropic sends them to Anthropic's own
+ *  API on ANTHROPIC_API_KEY (2026-11-16, the user: the gateway's credits ran
+ *  out on 2026-11-13, the Anthropic balance had US$150). The gateway still
+ *  draws neon/... pictures either way. */
+function viaNeon(): boolean {
+  return neonToken() !== "" && (process.env.DAILY_ANTHROPIC_VIA ?? "").trim() !== "anthropic";
+}
+
 function anthropicKey(): string {
-  if (neonToken() !== "") return neonToken();
+  if (viaNeon()) return neonToken();
   return (process.env.ANTHROPIC_API_KEY ?? "").trim();
 }
 
@@ -241,7 +262,7 @@ function held(s: unknown): unknown {
 }
 
 async function askAnthropic<T>(model: string, a: Ask): Promise<T> {
-  const neon = neonToken() !== "";
+  const neon = viaNeon();
   anthropic ??= new Anthropic(neon ?
     {apiKey: neonToken(), authToken: neonToken(), baseURL: `${(process.env.NEON_AI_GATEWAY_BASE_URL ?? "").trim()}/anthropic`, timeout: TIMEOUT_MS} :
     {apiKey: anthropicKey(), timeout: TIMEOUT_MS});
